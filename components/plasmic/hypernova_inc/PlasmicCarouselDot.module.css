@@ -1,0 +1,10 @@
+.root {
+  object-fit: cover;
+  max-width: 100%;
+  color: #fff;
+  position: relative;
+  height: 1em;
+}
+.rootactive {
+  color: var(--token-CtevabluNWTZ);
+}

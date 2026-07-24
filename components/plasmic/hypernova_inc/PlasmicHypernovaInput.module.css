@@ -1,0 +1,16 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  align-items: center;
+  background: none;
+  min-width: 0;
+  border-width: 1px;
+  border-style: none;
+}
+.textInput:global(.__wab_instance) {
+  max-width: 100%;
+}

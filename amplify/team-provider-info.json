@@ -1,0 +1,119 @@
+{
+  "jasondev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-jasondev-1ffcf-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-jasondev-1ffcf-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-jasondev-1ffcf-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-jasondev-1ffcf-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-jasondev-1ffcf-unauthRole",
+      "StackName": "amplify-hypernovainc-jasondev-1ffcf",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-jasondev-1ffcf/f0a8eeb0-5089-11f0-94d5-0a9e348d36b9",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "api": {
+        "hypernovainc": {}
+      }
+    }
+  },
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-dev-707f0-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-dev-707f0-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-dev-707f0-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-dev-707f0-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-dev-707f0-unauthRole",
+      "StackName": "amplify-hypernovainc-dev-707f0",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-dev-707f0/46b166f0-3b4c-11f0-9754-066c1795585d",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "api": {
+        "hypernovainc": {}
+      },
+      "auth": {
+        "hypernovainca9cf757ea9cf757e": {}
+      }
+    }
+  },
+  "tyler": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-tyler-00c76-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-tyler-00c76-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-tyler-00c76-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-tyler-00c76-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-tyler-00c76-unauthRole",
+      "StackName": "amplify-hypernovainc-tyler-00c76",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-tyler-00c76/f3707710-3d99-11f0-9b31-067436f50941",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "api": {
+        "hypernovainc": {}
+      }
+    }
+  },
+  "main": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-main-acfaa-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-main-acfaa-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-main-acfaa-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-main-acfaa-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-main-acfaa-unauthRole",
+      "StackName": "amplify-hypernovainc-main-acfaa",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-main-acfaa/33388520-3d9c-11f0-bd9c-024e9826fe6b",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "auth": {
+        "hypernovainca9cf757ea9cf757e": {}
+      }
+    }
+  },
+  "contactfor": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-contactfor-3b4ef-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-contactfor-3b4ef-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-contactfor-3b4ef-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-contactfor-3b4ef-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-contactfor-3b4ef-unauthRole",
+      "StackName": "amplify-hypernovainc-contactfor-3b4ef",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-contactfor-3b4ef/5da08f40-aa04-11f0-8517-02d03d9d2341",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "api": {
+        "hypernovainc": {}
+      },
+      "auth": {
+        "hypernovainca9cf757ea9cf757e": {}
+      }
+    }
+  },
+  "noahdev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-hypernovainc-noahdev-02a16-authRole",
+      "UnauthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-noahdev-02a16-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::641444422390:role/amplify-hypernovainc-noahdev-02a16-authRole",
+      "Region": "us-east-2",
+      "DeploymentBucketName": "amplify-hypernovainc-noahdev-02a16-deployment",
+      "UnauthRoleName": "amplify-hypernovainc-noahdev-02a16-unauthRole",
+      "StackName": "amplify-hypernovainc-noahdev-02a16",
+      "StackId": "arn:aws:cloudformation:us-east-2:641444422390:stack/amplify-hypernovainc-noahdev-02a16/cd1c6360-aace-11f0-b124-0a770d5e9d9b",
+      "AmplifyAppId": "d1aj2yk24kq81j"
+    },
+    "categories": {
+      "auth": {
+        "hypernovainca9cf757ea9cf757e": {}
+      },
+      "api": {
+        "hypernovainc": {}
+      }
+    }
+  }
+}

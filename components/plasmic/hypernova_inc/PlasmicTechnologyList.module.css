@@ -1,0 +1,109 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  padding: 0px;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .root {
+    width: 100%;
+    min-width: 0;
+  }
+}
+.cmsDataFetcher:global(.__wab_instance) {
+  animation: none;
+  width: 100%;
+  display: flex;
+  max-width: 100%;
+  object-fit: cover;
+  flex-direction: row;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  flex-wrap: wrap;
+  align-items: stretch;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  justify-content: center;
+  align-content: flex-start;
+  min-width: 0;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .cmsDataFetcher:global(.__wab_instance) {
+    width: auto;
+    row-gap: var(--token-a5WUvMxZiMLE);
+    column-gap: var(--token-a5WUvMxZiMLE);
+    padding: 8px;
+  }
+}
+.freeBox {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: auto;
+  height: auto;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  border-radius: 20px;
+  padding: 0px;
+  border: 1px none #ffffff4d;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .freeBox {
+    min-width: auto;
+    min-height: auto;
+  }
+}
+.techTile:global(.__wab_instance) {
+  animation: none;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .techTile:global(.__wab_instance) {
+    flex-shrink: 0;
+  }
+}
+.techTiletileSize_large:global(.__wab_instance) {
+  flex-shrink: 0;
+}
+.techTileuseCase_nova:global(.__wab_instance) {
+  flex-shrink: 0;
+}
+.cmsEntryImage:global(.__wab_instance) {
+  animation: none;
+  max-width: 100%;
+  object-fit: cover;
+}
+.img {
+  animation: none;
+  object-fit: contain;
+  width: 55px;
+  height: 55px;
+}
+.img > picture > img {
+  object-fit: contain;
+}
+.cmsEntryField:global(.__wab_instance) {
+  animation: none;
+}
+.text___8GDhr {
+  animation: none;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.text__ryPi6 {
+  animation: none;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  min-width: 0;
+}

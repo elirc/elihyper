@@ -1,0 +1,26 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+}
+.freeBox {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 906px;
+  height: 906px;
+  max-width: 100%;
+  background: linear-gradient(0deg, #c30eff 0%, #01a8eecc 100%) 0% 0% / 100%
+    100% repeat;
+  filter: blur(376.5px);
+  flex-shrink: 0;
+  padding: 0px;
+}

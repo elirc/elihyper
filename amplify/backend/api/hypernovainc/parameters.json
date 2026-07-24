@@ -1,0 +1,6 @@
+{
+  "AppSyncApiName": "hypernovainc",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthModeLastUpdated": "2025-10-14T23:25:24.219Z"
+}

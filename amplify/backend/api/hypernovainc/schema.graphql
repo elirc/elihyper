@@ -1,0 +1,45 @@
+# This "input" configures a global authorization rule to enable public access to
+# all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
+type Project @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+  id: ID!
+  scope: String
+  timeline: String
+  teamSize: String
+  infrastructure: String
+  cost: String
+  estimatedCost: String
+  estimatedTimeline: String
+  summary: String
+  AI_timeline: String
+  AI_scope: String
+  AI_teamSize: String
+  AI_infrastructure: String
+  AI_cost: String
+  AI_estimatedCost: String
+  AI_estimatedTimeline: String
+  AI_summary: String
+  AI_improvedScope: String
+  AI_costAnalysis: String
+  AI_timelineValidation: String
+  AI_infrastructureRecommendations: String
+  AI_riskAssessment: String
+}
+
+type Lead @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+  email: String!
+  id: ID!
+  firstName: String!
+  lastName: String!
+  phoneNumber: String!
+  description: String
+  environment: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type LeadReceiver @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+  email: String! @primaryKey
+  name: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}

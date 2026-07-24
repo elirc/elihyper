@@ -1,0 +1,112 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  align-items: center;
+  background: var(--token-42eCsixaOo9K);
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  min-width: 0;
+}
+.sliderCarousel:global(.__wab_instance) {
+  animation: none;
+  width: 100%;
+  max-width: 100%;
+  flex-direction: column;
+  object-fit: cover;
+  min-width: 0;
+}
+.freeBox___9VJzi {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+.testimonialCard__lcT6X:global(.__wab_instance) {
+  max-width: 100%;
+}
+.svg___7XVDv {
+  object-fit: cover;
+  max-width: 100%;
+  align-self: center;
+  color: #d9d9d9;
+  height: 1em;
+}
+.freeBox__wud8 {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+.testimonialCard__xjImm:global(.__wab_instance) {
+  max-width: 100%;
+}
+.svg___9Zh0J {
+  object-fit: cover;
+  max-width: 100%;
+  align-self: center;
+  color: #d9d9d9;
+  height: 1em;
+}
+.freeBox___9Fy4Q {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+.testimonialCard__ogVl1:global(.__wab_instance) {
+  max-width: 100%;
+}
+.svg__f39Da {
+  object-fit: cover;
+  max-width: 100%;
+  align-self: center;
+  color: #d9d9d9;
+  height: 1em;
+}
+.freeBox__ktIOk {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+.testimonialCard___028LD:global(.__wab_instance) {
+  max-width: 100%;
+}
+.svg__hDgx {
+  object-fit: cover;
+  max-width: 100%;
+  align-self: center;
+  color: #d9d9d9;
+  height: 1em;
+}

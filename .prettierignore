@@ -1,0 +1,13 @@
+components/plasmic
+components/plasmic-tokens.theo.json
+mocks
+core/utils/queries.ts
+
+
+# Ignore all markdown files
+*.md
+**/*.md
+
+# Ignore all markdown files in docs directory
+docs/**/*.md
+

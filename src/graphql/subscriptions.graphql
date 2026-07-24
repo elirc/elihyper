@@ -1,0 +1,91 @@
+# this is an auto generated file. This will be overwritten
+
+subscription OnCreateProject($filter: ModelSubscriptionProjectFilterInput) {
+  onCreateProject(filter: $filter) {
+    id
+    scope
+    timeline
+    teamSize
+    infrastructure
+    cost
+    estimatedCost
+    estimatedTimeline
+    summary
+    AI_timeline
+    AI_scope
+    AI_teamSize
+    AI_infrastructure
+    AI_cost
+    AI_estimatedCost
+    AI_estimatedTimeline
+    AI_summary
+    AI_improvedScope
+    AI_costAnalysis
+    AI_timelineValidation
+    AI_infrastructureRecommendations
+    AI_riskAssessment
+    createdAt
+    updatedAt
+    __typename
+  }
+}
+
+subscription OnUpdateProject($filter: ModelSubscriptionProjectFilterInput) {
+  onUpdateProject(filter: $filter) {
+    id
+    scope
+    timeline
+    teamSize
+    infrastructure
+    cost
+    estimatedCost
+    estimatedTimeline
+    summary
+    AI_timeline
+    AI_scope
+    AI_teamSize
+    AI_infrastructure
+    AI_cost
+    AI_estimatedCost
+    AI_estimatedTimeline
+    AI_summary
+    AI_improvedScope
+    AI_costAnalysis
+    AI_timelineValidation
+    AI_infrastructureRecommendations
+    AI_riskAssessment
+    createdAt
+    updatedAt
+    __typename
+  }
+}
+
+subscription OnDeleteProject($filter: ModelSubscriptionProjectFilterInput) {
+  onDeleteProject(filter: $filter) {
+    id
+    scope
+    timeline
+    teamSize
+    infrastructure
+    cost
+    estimatedCost
+    estimatedTimeline
+    summary
+    AI_timeline
+    AI_scope
+    AI_teamSize
+    AI_infrastructure
+    AI_cost
+    AI_estimatedCost
+    AI_estimatedTimeline
+    AI_summary
+    AI_improvedScope
+    AI_costAnalysis
+    AI_timelineValidation
+    AI_infrastructureRecommendations
+    AI_riskAssessment
+    createdAt
+    updatedAt
+    __typename
+  }
+}

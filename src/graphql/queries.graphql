@@ -1,0 +1,65 @@
+# this is an auto generated file. This will be overwritten
+
+query GetProject($id: ID!) {
+  getProject(id: $id) {
+    id
+    scope
+    timeline
+    teamSize
+    infrastructure
+    cost
+    estimatedCost
+    estimatedTimeline
+    summary
+    AI_timeline
+    AI_scope
+    AI_teamSize
+    AI_infrastructure
+    AI_cost
+    AI_estimatedCost
+    AI_estimatedTimeline
+    AI_summary
+    AI_improvedScope
+    AI_costAnalysis
+    AI_timelineValidation
+    AI_infrastructureRecommendations
+    AI_riskAssessment
+    createdAt
+    updatedAt
+    __typename
+  }
+}
+
+query ListProjects($filter: ModelProjectFilterInput, $limit: Int, $nextToken: String) {
+  listProjects(filter: $filter, limit: $limit, nextToken: $nextToken) {
+    items {
+      id
+      scope
+      timeline
+      teamSize
+      infrastructure
+      cost
+      estimatedCost
+      estimatedTimeline
+      summary
+      AI_timeline
+      AI_scope
+      AI_teamSize
+      AI_infrastructure
+      AI_cost
+      AI_estimatedCost
+      AI_estimatedTimeline
+      AI_summary
+      AI_improvedScope
+      AI_costAnalysis
+      AI_timelineValidation
+      AI_infrastructureRecommendations
+      AI_riskAssessment
+      createdAt
+      updatedAt
+      __typename
+    }
+    nextToken
+    __typename
+  }
+}

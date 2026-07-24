@@ -1,0 +1,286 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 306px;
+  height: 269px;
+  justify-content: center;
+  align-items: center;
+  row-gap: var(--token-Eph2eYQkLDAS);
+  justify-self: flex-start;
+  background: var(--token-bOFM3ntQuIgx);
+  overflow: hidden;
+  box-shadow: none;
+  border-radius: 20px;
+  padding: 50px;
+  border: 1px solid var(--token-qI0mz-f3nknW);
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .root {
+    width: 100%;
+    min-width: 0;
+    padding: 25px;
+  }
+}
+.roothoverStyle_grid {
+  box-shadow: 0px 10px 74px 10px var(--token-04DLQImJcBOH);
+}
+.rootbackground_none {
+  background: none;
+}
+.rooticonPosition_topLeft {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.roothasDescription {
+  width: 418px;
+  height: 342px;
+  padding: 25px;
+}
+@media (max-width: 1024px) {
+  .roothasDescription {
+    width: 250px;
+  }
+}
+.rootborder_none {
+  border-style: none;
+}
+.rootpadding__0 {
+  padding: 0px;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .roothasDescription_iconPosition_topLeft {
+    align-items: center;
+    justify-content: center;
+  }
+}
+.rooticonSize__90Px_iconPosition_topLeft {
+  align-items: flex-start;
+  justify-content: center;
+}
+.roothasDescription_iconSize__60Px_iconPosition_topLeft {
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 342px;
+  height: auto;
+  padding: 45px;
+}
+@media (max-width: 1024px) {
+  .roothasDescription_iconSize__60Px_iconPosition_topLeft {
+    padding: 20px;
+  }
+}
+.root:hover {
+  background: var(--token-aWJezReMKGoy);
+  border-color: var(--token-A0gdXvu-mEZL);
+}
+.rootbackground_none:hover {
+  background: none;
+  box-shadow: 0px 10px 74px 10px var(--token-04DLQImJcBOH);
+}
+.roothoverStyle_none_background_none:hover {
+  box-shadow: none;
+  border-color: var(--token-qI0mz-f3nknW);
+}
+.iconWrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+  padding: 0px;
+}
+.iconWrappericonPosition_topLeft {
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: auto;
+}
+.iconWrappericonSize__90Px {
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+.iconWrappericonSize__60Px {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+.slotTargetChildren {
+  color: var(--token-mSfQyuGzKkLg);
+}
+.slotTargetChildreniconColor_blue {
+  color: var(--token-CtevabluNWTZ);
+}
+.root:hover .slotTargetChildren {
+  color: var(--token-CtevabluNWTZ);
+}
+.svg__wYxbO {
+  animation: none;
+  object-fit: cover;
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  min-width: 0;
+  min-height: 0;
+}
+.titleWrapper {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  min-width: 0;
+}
+.titleWrapperhasDescription {
+  font-size: var(--token-RirudxurhHrN);
+  font-weight: 400;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .titleWrapperhasDescription_iconPosition_topLeft {
+    text-align: center;
+  }
+}
+.titleWrapperhasDescription_iconSize__60Px_iconPosition_topLeft {
+  text-align: left;
+}
+.slotTargetSloticonPosition_topLeft {
+  text-align: left;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .slotTargetSlothasDescription_iconPosition_topLeft {
+    text-align: center;
+  }
+}
+.text__ee3MB {
+  animation: none;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.descriptionWrapper {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  min-width: 0;
+}
+.descriptionWrappericonPosition_topLeft {
+  justify-content: flex-start;
+  align-items: center;
+}
+.descriptionWrapperhasDescription {
+  font-size: var(--token-sMYmTpwNg-dX);
+  display: flex;
+}
+.slotTargetDescriptioniconPosition_topLeft {
+  text-align: left;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .slotTargetDescriptionhasDescription_iconPosition_topLeft {
+    text-align: center;
+  }
+}
+.slotTargetDescriptionhasDescription_iconSize__60Px_iconPosition_topLeft {
+  text-align: left;
+}
+.text__q9ULt {
+  animation: none;
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.activeGridHoverStyle {
+  flex-direction: row;
+  position: absolute;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  z-index: -2;
+  min-width: 0;
+  display: none;
+}
+.activeGridHoverStylehoverStyle_grid {
+  display: flex;
+}
+.rootbackground_none:hover .activeGridHoverStylebackground_none {
+  display: flex;
+}
+.roothoverStyle_none_background_none:hover
+  .activeGridHoverStylehoverStyle_none_background_none {
+  display: none;
+}
+.freeBox__mzzyM {
+  display: flex;
+  flex-direction: row;
+  position: absolute;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  left: 0;
+  top: 0;
+  z-index: -1;
+  background: linear-gradient(0deg, #ffffff00 0%, #000000 74%) 0% 0% / 100% 100%
+    repeat;
+  right: 0;
+  bottom: 0;
+  opacity: 1;
+}
+.freeBox__jn1Rr {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-rhvrG6H0n5Kr);
+  background:
+    url("/plasmic/hypernova_inc/images/image16.png") top 50% left 50% / cover no-repeat,
+    linear-gradient(0deg, var(--token-CtevabluNWTZ) 0%, #000000 75%) 0% 0% /
+      100% 100% repeat;
+  opacity: 0.75;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+}
+.lottie:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+}
+.lottiehoverStyle_grid:global(.__wab_instance) {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}

@@ -1,0 +1,58 @@
+.root {
+  animation: none;
+  display: inline-flex;
+  flex-direction: column;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  transition-property: all;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+  -webkit-transition-property: all;
+  -webkit-transition-timing-function: ease-in-out;
+  -webkit-transition-duration: 0.2s;
+  border-radius: 15px;
+  padding: 0px;
+}
+.root:hover {
+  transform: scale3d(1.2, 1.2, 1.2);
+  transform-style: preserve-3d;
+}
+.root:hover * {
+  transform-style: preserve-3d;
+}
+.link {
+  animation: none;
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  padding: 8px;
+}
+.cmsEntryImage:global(.__wab_instance) {
+  animation: none;
+  max-width: 100%;
+  object-fit: cover;
+}
+.img {
+  animation: none;
+  object-fit: fill;
+  height: 89px;
+  width: 89px;
+}
+.img > picture > img {
+  object-fit: fill;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .img {
+    width: 55px;
+    height: 55px;
+  }
+}

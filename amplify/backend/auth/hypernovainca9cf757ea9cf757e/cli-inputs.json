@@ -1,0 +1,53 @@
+{
+  "version": "1",
+  "cognitoConfig": {
+    "identityPoolName": "hypernovainca9cf757e_identitypool_a9cf757e",
+    "allowUnauthenticatedIdentities": true,
+    "resourceNameTruncated": "hyperna9cf757e",
+    "userPoolName": "hypernovainca9cf757e_userpool_a9cf757e",
+    "autoVerifiedAttributes": ["email"],
+    "mfaConfiguration": "OFF",
+    "mfaTypes": ["SMS Text Message"],
+    "smsAuthenticationMessage": "Your authentication code is {####}",
+    "smsVerificationMessage": "Your verification code is {####}",
+    "emailVerificationSubject": "Your verification code",
+    "emailVerificationMessage": "Your verification code is {####}",
+    "defaultPasswordPolicy": false,
+    "passwordPolicyMinLength": 8,
+    "passwordPolicyCharacters": [],
+    "requiredAttributes": ["email"],
+    "aliasAttributes": [],
+    "userpoolClientGenerateSecret": false,
+    "userpoolClientRefreshTokenValidity": 30,
+    "userpoolClientWriteAttributes": ["email"],
+    "userpoolClientReadAttributes": ["email"],
+    "userpoolClientLambdaRole": "hyperna9cf757e_userpoolclient_lambda_role",
+    "userpoolClientSetAttributes": false,
+    "sharedId": "a9cf757e",
+    "resourceName": "hypernovainca9cf757ea9cf757e",
+    "authSelections": "identityPoolAndUserPool",
+    "useDefault": "manual",
+    "thirdPartyAuth": false,
+    "userPoolGroups": false,
+    "adminQueries": false,
+    "triggers": {},
+    "hostedUI": false,
+    "userPoolGroupList": [],
+    "serviceName": "Cognito",
+    "usernameCaseSensitive": false,
+    "useEnabledMfas": true,
+    "authRoleArn": {
+      "Fn::GetAtt": ["AuthRole", "Arn"]
+    },
+    "unauthRoleArn": {
+      "Fn::GetAtt": ["UnauthRole", "Arn"]
+    },
+    "breakCircularDependency": true,
+    "dependsOn": [],
+    "authProviders": [],
+    "parentStack": {
+      "Ref": "AWS::StackId"
+    },
+    "permissions": []
+  }
+}

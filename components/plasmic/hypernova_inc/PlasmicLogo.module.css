@@ -1,0 +1,70 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  padding: 0px;
+}
+.animatedStack {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+}
+.darkLogoAnimated:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+}
+.darkLogoAnimatedsize_medium:global(.__wab_instance) {
+  width: 233px;
+}
+.darkLogoAnimatedsize_small:global(.__wab_instance) {
+  width: 233px;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .darkLogoAnimatedsize_small:global(.__wab_instance) {
+    width: 170px;
+  }
+}
+.darkLogoAnimatedsize_extraSmall:global(.__wab_instance) {
+  width: 144px;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .darkLogoAnimatedsize_extraSmall:global(.__wab_instance) {
+    width: 89px;
+  }
+}
+.lightLogoAnimated:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+  height: 65px;
+  flex-shrink: 0;
+  display: none;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .lightLogoAnimated:global(.__wab_instance) {
+    height: 40px;
+    flex-shrink: 0;
+  }
+}
+.lightLogoAnimatedtype_animatedLight:global(.__wab_instance) {
+  display: flex;
+}
+.imageStack {
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  height: auto;
+  justify-content: flex-start;
+  align-items: center;
+}
+.img {
+  object-fit: cover;
+  max-width: 100%;
+}
+.img > picture > img {
+  object-fit: cover;
+}

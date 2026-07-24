@@ -1,0 +1,37 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  align-items: center;
+  justify-self: flex-start;
+  mix-blend-mode: normal;
+  min-width: 0;
+}
+.freeBox {
+  display: flex;
+  flex-direction: row;
+  position: absolute;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  left: 0px;
+  top: 0px;
+  background: linear-gradient(0deg, #000000 0%, #56b9ff00 45%) top 50% left
+    50% / cover repeat;
+  z-index: 2;
+  min-width: 0;
+  min-height: 0;
+  padding: 0px;
+}
+.img {
+  object-fit: cover;
+  max-width: 100%;
+}
+.img > picture > img {
+  object-fit: cover;
+}

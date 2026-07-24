@@ -1,0 +1,13 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: auto;
+  justify-content: flex-start;
+  align-items: center;
+  background: #0000001a;
+  backdrop-filter: blur(3px);
+  min-width: 0;
+  -webkit-backdrop-filter: blur(3px);
+}

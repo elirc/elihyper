@@ -1,0 +1,6 @@
+npm run lint
+
+# Check if there are any unstaged changes
+if [ -n "$(git status --porcelain)" ]; then
+  git add -A
+fi

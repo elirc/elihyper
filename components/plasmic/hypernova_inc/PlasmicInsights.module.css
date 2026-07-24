@@ -1,0 +1,325 @@
+.root {
+  display: grid;
+  flex-direction: column;
+  position: relative;
+  background: var(--token-42eCsixaOo9K);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns:
+    var(--plsmc-viewport-gap) 1fr minmax(0, var(--plsmc-wide-chunk))
+    min(
+      var(--plsmc-standard-width),
+      calc(100% - var(--plsmc-viewport-gap) - var(--plsmc-viewport-gap))
+    )
+    minmax(0, var(--plsmc-wide-chunk)) 1fr var(--plsmc-viewport-gap);
+}
+.root > * {
+  grid-column: 4;
+}
+@media (max-width: 1024px) {
+  .root > * {
+    grid-column: 4;
+  }
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .root > * {
+    grid-column: 4;
+  }
+}
+.globalShell:global(.__wab_instance) {
+  max-width: 100%;
+  width: 100%;
+  height: 100%;
+  grid-column-start: 1 !important;
+  grid-column-end: -1 !important;
+  min-height: 0;
+}
+.freeBox__agn1F {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  row-gap: var(--token-TOYeqOh-Zbs-);
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: 0px;
+}
+.section__wrseq:global(.__wab_instance) {
+  max-width: 100%;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .section__wrseq:global(.__wab_instance) {
+    min-height: 600px;
+  }
+}
+.hero:global(.__wab_instance) {
+  max-width: 100%;
+}
+.h1 {
+  text-align: center;
+}
+.text__trZl2 {
+  text-align: center;
+  line-height: 1.5;
+}
+.text__oBzGt {
+  padding-bottom: 0px;
+}
+.hypernovaLinkButton__jCdji:global(.__wab_instance) {
+  animation: none;
+}
+.text__vc6Nu {
+  animation: none;
+  width: auto;
+}
+.svg__rVmLf {
+  animation: none;
+  object-fit: cover;
+  max-width: 20px;
+  width: 20px;
+  color: var(--token-mSfQyuGzKkLg);
+  height: 1em;
+  margin: 0px 0px 0px var(--token-phwCbjdZBmjb);
+}
+.hypernovaLinkButton__hWbNl:global(.__wab_instance) {
+  animation: none;
+}
+.text__irBkV {
+  animation: none;
+  width: auto;
+  margin-bottom: 0px;
+}
+.svg__srZAh {
+  animation: none;
+  object-fit: cover;
+  max-width: 20px;
+  color: var(--token-CtevabluNWTZ);
+  width: 20px;
+  height: 1em;
+  margin: 0px 0px 0px var(--token-phwCbjdZBmjb);
+}
+.img__fjCNc {
+  object-fit: cover;
+  max-width: 100%;
+  margin-top: -50px;
+}
+.img__fjCNc > picture > img {
+  object-fit: cover;
+}
+@media (max-width: 1024px) {
+  .img__fjCNc {
+    position: absolute;
+    left: 0px;
+    top: -50px;
+    display: none;
+  }
+}
+.freeBox__tbMlx {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  justify-content: flex-start;
+  align-items: center;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  top: 100px;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0px;
+}
+@media (max-width: 1024px) {
+  .freeBox__tbMlx {
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
+  }
+}
+.astronaut:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+  position: absolute;
+  left: 0;
+  top: -100px;
+  bottom: 0;
+}
+@media (max-width: 1024px) {
+  .astronaut:global(.__wab_instance) {
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    position: relative;
+  }
+}
+.img__bm1Uu {
+  object-fit: scale-down;
+  position: relative;
+  left: auto;
+  top: auto;
+  bottom: auto;
+  height: auto;
+  width: 25vw;
+}
+.img__bm1Uu > picture > img {
+  object-fit: scale-down;
+}
+@media (max-width: 1024px) {
+  .img__bm1Uu {
+    width: 50vw;
+  }
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .img__bm1Uu {
+    width: 100%;
+    min-width: 0;
+  }
+}
+.smallRock:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+  position: absolute;
+  left: auto;
+  top: 0;
+  right: 0;
+}
+.img__k0Hh1 {
+  object-fit: scale-down;
+  max-width: 100%;
+  position: relative;
+  left: auto;
+  top: auto;
+  height: auto;
+  right: auto;
+  margin-right: 100px;
+  margin-top: -20px;
+  width: 10vw;
+}
+.img__k0Hh1 > picture > img {
+  object-fit: scale-down;
+}
+@media (max-width: 1024px) {
+  .img__k0Hh1 {
+    margin-top: 0px;
+  }
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .img__k0Hh1 {
+    width: 20vw;
+    margin: 0px;
+  }
+}
+.bigRock:global(.__wab_instance) {
+  max-width: 100%;
+  object-fit: cover;
+  position: absolute;
+  left: auto;
+  top: 200px;
+  right: 200px;
+  bottom: 0;
+}
+@media (max-width: 1024px) {
+  .bigRock:global(.__wab_instance) {
+    top: auto;
+    right: auto;
+    bottom: 0;
+    left: 0;
+  }
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .bigRock:global(.__wab_instance) {
+    margin-top: 0px;
+    margin-bottom: -100px;
+  }
+}
+.img__mh9Ma {
+  object-fit: scale-down;
+  position: relative;
+  left: auto;
+  top: auto;
+  height: auto;
+  right: auto;
+  width: 15vw;
+}
+.img__mh9Ma > picture > img {
+  object-fit: scale-down;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .img__mh9Ma {
+    width: 30vw;
+    margin-top: 50px;
+  }
+}
+.img__jcZkG {
+  animation: none;
+  object-fit: cover;
+  max-width: 100%;
+}
+.img__jcZkG > picture > img {
+  object-fit: cover;
+}
+.freeBox__srrIr {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  row-gap: var(--token-rhvrG6H0n5Kr);
+  width: 100%;
+  min-width: 0;
+  padding: 0px;
+}
+@media (min-width: 0px) and (max-width: 768px) {
+  .freeBox__srrIr {
+    margin-top: 144px;
+  }
+}
+.section__fhzTg:global(.__wab_instance) {
+  max-width: 100%;
+}
+.h2 {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+.insightStack:global(.__wab_instance) {
+  max-width: 100%;
+}
+.img__gs40A {
+  animation: none;
+  object-fit: cover;
+  max-width: 100%;
+}
+.img__gs40A > picture > img {
+  object-fit: cover;
+}
+.img___8JuqZ {
+  animation: none;
+  object-fit: cover;
+  max-width: 100%;
+}
+.img___8JuqZ > picture > img {
+  object-fit: cover;
+}
+.footer__uvgeP:global(.__wab_instance) {
+  animation: none;
+  z-index: auto;
+  position: relative;
+  left: auto;
+  top: auto;
+  height: auto;
+  bottom: auto;
+}
+.text___3DuaY {
+  animation: none;
+}

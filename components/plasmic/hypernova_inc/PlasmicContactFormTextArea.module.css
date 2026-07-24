@@ -1,0 +1,29 @@
+.description {
+  font-size: 18px;
+  color: #ffffff;
+  line-height: 28px;
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  outline-style: none;
+  outline-color: #ffffff99;
+  background: #ffffff0d;
+  min-height: 200px;
+  position: relative;
+  min-width: 0;
+  border-radius: 20px;
+  padding: 10px 30px;
+  border: 1px solid #ffffff99;
+}
+.descriptionhasError {
+  outline-style: none;
+  border: 2px solid var(--token-OHYdoHV0Vevq);
+}
+.descriptioncolor_slightlyTransparentBlack {
+  background: var(--token-IuKke_02S3dX);
+}

@@ -1,0 +1,31 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  column-gap: var(--token-A4dhXpH4tB_l);
+  position: relative;
+  min-width: 0;
+  padding: var(--token-J5qaz_U09kvK);
+}
+.text__pu6OM {
+  color: var(--token-OHYdoHV0Vevq);
+  width: auto;
+  font-size: var(--token-FrdT1jJTiBnT);
+  height: auto;
+  line-height: var(--token-LeaZ__MpZCzA);
+}
+.text__asbfV {
+  color: var(--token-OHYdoHV0Vevq);
+  font-size: var(--token-FrdT1jJTiBnT);
+  font-weight: 500;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  line-height: var(--token-LeaZ__MpZCzA);
+  text-align: left;
+  min-width: 0;
+}
