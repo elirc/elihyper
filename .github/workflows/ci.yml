@@ -28,6 +28,18 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
+        with:
+          # gitleaks needs history to scan the commits a PR adds, not just the
+          # final tree. 0 = full history.
+          fetch-depth: 0
+
+      # A safety net, not a substitute for care. This catches the classic
+      # mistake -- pasting a token into a config file -- before it reaches
+      # main. It cannot un-leak anything already pushed: see SECURITY.md.
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
