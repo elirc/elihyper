@@ -7,6 +7,12 @@ import {
   validateOptionalString,
   FIELD_LIMITS,
 } from '../../lib/inputValidation'
+import { requireEnv, optionalEnv, logServerEnvStatus, MissingEnvironmentVariableError } from '../../lib/serverEnv'
+
+// Runs once, when this module is first loaded, so a misconfigured deployment
+// announces itself in the logs at boot instead of waiting for a visitor to
+// submit a form and receive a 500.
+logServerEnvStatus()
 
 interface HubSpotLeadRequest {
   firstName: string
@@ -75,11 +81,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString())
   res.setHeader('X-RateLimit-Reset', new Date(rateLimit.resetTime).toISOString())
 
-  // Get HubSpot API key from environment variables
-  const hubspotApiKey = process.env.HUBSPOT_API_KEY
-  if (!hubspotApiKey) {
-    console.error('HUBSPOT_API_KEY is not configured')
-    return res.status(500).json({ error: 'Server configuration error' })
+  // Read the HubSpot credential. requireEnv throws a named, described error
+  // rather than letting `undefined` travel into an Authorization header and
+  // come back as an opaque 401 from HubSpot.
+  let hubspotApiKey: string
+  try {
+    hubspotApiKey = requireEnv('HUBSPOT_API_KEY')
+  } catch (error) {
+    if (error instanceof MissingEnvironmentVariableError) {
+      console.error(`[config] ${error.message}`)
+      return res.status(500).json({ error: 'Server configuration error' })
+    }
+    throw error
   }
 
   try {
@@ -166,8 +179,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
      * Optionally, if you also have a prod checkbox property, set:
      * - HUBSPOT_ENV_PROD_PROPERTY_NAME=environment__prod
      */
-    const envDevProp = process.env.HUBSPOT_ENV_DEV_PROPERTY_NAME || 'environment__dev'
-    const envProdProp = (process.env.HUBSPOT_ENV_PROD_PROPERTY_NAME || '').trim()
+    const envDevProp = optionalEnv('HUBSPOT_ENV_DEV_PROPERTY_NAME', 'environment__dev')
+    const envProdProp = optionalEnv('HUBSPOT_ENV_PROD_PROPERTY_NAME')
     hubspotProperties[envDevProp] = resolvedEnv === 'dev'
     if (envProdProp) {
       hubspotProperties[envProdProp] = resolvedEnv === 'prod'
@@ -312,8 +325,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contactId: data.id,
       message: 'Contact created successfully in HubSpot',
       environment: resolvedEnv,
-      envDevPropertyName: process.env.HUBSPOT_ENV_DEV_PROPERTY_NAME || 'environment__dev',
-      envProdPropertyName: (process.env.HUBSPOT_ENV_PROD_PROPERTY_NAME || '').trim() || null,
+      envDevPropertyName: envDevProp,
+      envProdPropertyName: envProdProp || null,
     })
   } catch (error: unknown) {
     // Log full error details server-side only
