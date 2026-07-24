@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint && prettier --write .",
+    "lint:ci": "next lint && prettier --check .",
     "test": "npx --yes jest@29.7.0 --passWithNoTests",
     "test:watch": "npx --yes jest@29.7.0 --watch",
     "test:coverage": "npx --yes jest@29.7.0 --coverage",

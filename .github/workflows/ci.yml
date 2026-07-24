@@ -1,0 +1,56 @@
+# Continuous integration.
+#
+# The point of CI is to make "it works on my machine" irrelevant: every pull
+# request is built and tested on a clean machine before anyone reviews it.
+#
+# Keep this fast. A CI run people wait 20 minutes for is a CI run people learn
+# to ignore.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# If you push twice in a row, cancel the first run -- nobody cares whether the
+# commit you already replaced was green.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Cache ~/.npm keyed on package-lock.json so installs are fast.
+          cache: 'npm'
+
+      # `npm ci` (not `npm install`) installs exactly what package-lock.json
+      # pins and fails if the lockfile is out of sync. That is what you want in
+      # CI: reproducible, and loud when someone forgets to commit the lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting and lint
+        run: npm run lint:ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # The build must not depend on real secrets. Anything genuinely
+          # required at build time belongs in this block with a dummy value.
+          NEXT_PUBLIC_APP_ENV: dev
