@@ -8,6 +8,9 @@ import {
   FIELD_LIMITS,
 } from '../../lib/inputValidation'
 import { requireEnv, optionalEnv, logServerEnvStatus, MissingEnvironmentVariableError } from '../../lib/serverEnv'
+import { checkForSpam, HONEYPOT_FIELD } from '../../lib/spamGuard'
+import { getClientIp } from '../../lib/rateLimiter'
+import { logger } from '../../lib/logger'
 
 // Runs once, when this module is first loaded, so a misconfigured deployment
 // announces itself in the logs at boot instead of waiting for a visitor to
@@ -22,6 +25,10 @@ interface HubSpotLeadRequest {
   message?: string
   tracking_id?: string
   environment?: 'dev' | 'prod'
+  /** Anti-spam: hidden field a human never fills, and the form's render time. */
+  [HONEYPOT_FIELD]?: string
+  renderedAt?: number
+  turnstileToken?: string
   /** Which form produced this lead. Both entry points now post here. */
   source?: 'contact_form' | 'estimator'
   // Project estimator specific fields
@@ -101,6 +108,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Validate and extract request body
     const body: HubSpotLeadRequest = req.body
+
+    // Spam checks run before validation and before any third-party call: a bot
+    // submission should cost us nothing.
+    const spamCheck = await checkForSpam({
+      honeypot: (body as unknown as Record<string, unknown>)[HONEYPOT_FIELD],
+      renderedAt: body.renderedAt,
+      turnstileToken: body.turnstileToken,
+      remoteIp: getClientIp(req),
+    })
+
+    if (!spamCheck.ok) {
+      // Deliberately generic to the client. Telling a bot which signal caught
+      // it is telling its author what to change. The reason is logged instead.
+      logger.warn('[spam-guard] submission blocked', { reason: spamCheck.reason })
+      return res.status(400).json({ error: 'Unable to process this submission' })
+    }
 
     // Validate required fields with proper validation
     const firstNameValidation = validateName(body.firstName, 'First name', FIELD_LIMITS.firstName)
