@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect, forwardRef } from 'react'
 import { PlasmicProjectEstimator, DefaultProjectEstimatorProps } from './plasmic/hypernova_inc/PlasmicProjectEstimator'
 import { HTMLElementRefOf } from '@plasmicapp/react-web'
+import { useRouter } from 'next/router'
 import { client } from '../src/utils/api-client'
 import { createProject, createLead } from '../src/graphql/mutations'
 import { getProject } from '../src/graphql/queries'
@@ -8,6 +9,8 @@ import { onUpdateProject } from '../src/graphql/subscriptions'
 import GanttChart from './GanttChart'
 import FieldError from './FieldError'
 import EstimateStatusBanner, { type AiStatus } from './EstimateStatusBanner'
+import EstimateShareBar, { EstimateNotFound } from './EstimateShareBar'
+import EstimatorProgress, { WIZARD_STEPS, type WizardStep } from './EstimatorProgress'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
@@ -126,6 +129,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
   const [lastProjectId, setLastProjectId] = useState<string | null>(null)
   const contactFormTrackedFields = useRef<Set<string>>(new Set())
+  const estimatorRenderedAt = useRef<number>(Date.now())
   const [autoSelections, setAutoSelections] = useState({
     timeline: false,
     team: false,
@@ -145,6 +149,80 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   // render. Which meant the one thing the UI most needed to know -- are these
   // real figures or our fallback arithmetic? -- was invisible to it.
   const [aiStatus, setAiStatus] = useState<AiStatus>('pending')
+
+  // HN-01: an estimate restored from a shared link that could not be found.
+  const [restoreFailed, setRestoreFailed] = useState(false)
+
+  // Furthest step the visitor has reached. Progress labels are clickable up to
+  // here and disabled beyond it, so nobody can skip a question by clicking
+  // ahead -- the validation in handleNext is still the only way forward.
+  const [maxStepReached, setMaxStepReached] = useState<WizardStep>('scope')
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false)
+
+  // HN-02: opt-in, defaulted ON. The visitor has just asked for an estimate,
+  // so a copy of it is the thing they came for rather than marketing they
+  // must be tricked into. It is still a real checkbox they can clear.
+  const [emailCopy, setEmailCopy] = useState(true)
+  const router = useRouter()
+
+  /**
+   * Copies a Project record onto component state.
+   *
+   * This logic existed in four places: the subscription handler, the immediate
+   * fetch, the fallback poller and the summary refresher. They had already
+   * drifted -- the refresher never handled AI_infrastructureRecommendations, so
+   * a late-arriving recommendation was silently dropped on that path alone.
+   *
+   * HN-01 needs a fifth caller (restoring an estimate from a link), which made
+   * consolidating this the prerequisite rather than an optional tidy-up.
+   *
+   * Returns true when the record carries a real AI analysis, so callers can
+   * decide whether to advance the wizard.
+   */
+  const applyProjectToState = useCallback((project?: ProjectData | null): boolean => {
+    if (!project) return false
+
+    if (project.AI_estimatedCost) setAiEstimate(project.AI_estimatedCost)
+    if (project.AI_estimatedTimeline) setAiTimeline(project.AI_estimatedTimeline)
+    if (project.AI_teamSize) setAiTeamSize(project.AI_teamSize)
+    if (project.AI_improvedScope) setAiImprovedScope(project.AI_improvedScope)
+    if (project.AI_costAnalysis) setAiCostAnalysis(project.AI_costAnalysis)
+    if (project.AI_infrastructure) setAiInfrastructure(project.AI_infrastructure)
+    if (project.AI_infrastructureRecommendations)
+      setAiInfrastructureRecommendations(project.AI_infrastructureRecommendations)
+    if (project.AI_riskAssessment) setAiRiskAssessment(project.AI_riskAssessment)
+
+    if (project.scope) setFormState((prev) => ({ ...prev, scope: project.scope || '' }))
+
+    // A concrete value from the worker overrides "Recommend for me": the
+    // recommendation has now been made, so the checkbox should stop claiming
+    // it is pending.
+    if (project.teamSize) {
+      setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
+      setFormState((prev) => ({ ...prev, selectedTeam: project.teamSize || '' }))
+    }
+    if (project.infrastructure) {
+      setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
+      setFormState((prev) => ({ ...prev, infrastructure: project.infrastructure || '' }))
+    }
+
+    // Phase data arrives in one of two shapes depending on which prompt ran.
+    if (project.AI_timelineValidation) {
+      const phases = extractPhasesJsonFromText(project.AI_timelineValidation)
+      if (phases) setAiPhasesJson(phases)
+      setAiTimelineValidationRaw(project.AI_timelineValidation)
+    }
+    if (project.AI_timeline) {
+      try {
+        const parsed = JSON.parse(project.AI_timeline)
+        if (parsed && parsed.phases) setAiPhasesJson(project.AI_timeline)
+      } catch {
+        // AI_timeline is not always JSON; the text path above covers it.
+      }
+    }
+
+    return Boolean(project.AI_costAnalysis || project.AI_summary || project.AI_estimatedCost)
+  }, [])
 
   const failStep = useCallback((stepName: StepType, message: string) => {
     setStepErrors((prev) => ({ ...prev, [stepName]: message }))
@@ -319,58 +397,9 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
               const updated = data?.onUpdateProject
               if (!updated || updated.id !== projectId) return
               logger.debug('[estimator] subscription update received')
-              if (updated.AI_estimatedCost) {
-                setAiEstimate(updated.AI_estimatedCost)
-              }
-              if (updated.AI_estimatedTimeline) {
-                setAiTimeline(updated.AI_estimatedTimeline)
-              }
-              if (updated.teamSize) {
-                setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
-                setFormState((prev) => ({ ...prev, selectedTeam: updated.teamSize || '' }))
-              }
-              if (updated.AI_teamSize) {
-                setAiTeamSize(updated.AI_teamSize)
-              }
-              if (updated.scope) {
-                setFormState((prev) => ({ ...prev, scope: updated.scope || '' }))
-              }
-              if (updated.AI_improvedScope) {
-                setAiImprovedScope(updated.AI_improvedScope)
-              }
-              if (updated.AI_costAnalysis) {
-                setAiCostAnalysis(updated.AI_costAnalysis)
-              }
-              if (updated.AI_infrastructure) {
-                setAiInfrastructure(updated.AI_infrastructure)
-              }
-              if (updated.infrastructure) {
-                setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
-                setFormState((prev) => ({ ...prev, infrastructure: updated.infrastructure || '' }))
-              }
-              if (updated.AI_timelineValidation) {
-                const pj = extractPhasesJsonFromText(updated.AI_timelineValidation)
-                if (pj) setAiPhasesJson(pj)
-                setAiTimelineValidationRaw(updated.AI_timelineValidation)
-              }
-              if (updated.AI_timeline) {
-                try {
-                  // Expect JSON with { totalDays, phases }
-                  const parsed = JSON.parse(updated.AI_timeline)
-                  if (parsed && parsed.phases) {
-                    setAiPhasesJson(updated.AI_timeline)
-                  }
-                } catch {}
-              }
-              if (updated.AI_infrastructureRecommendations) {
-                setAiInfrastructureRecommendations(updated.AI_infrastructureRecommendations)
-              }
-              if (updated.AI_riskAssessment) {
-                setAiRiskAssessment(updated.AI_riskAssessment)
-              }
-              // Transition from loading to summary when AI data arrives
-              // Check multiple fields since AI_estimatedCost might remain null
-              if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
+              const hasAi = applyProjectToState(updated)
+
+              if (hasAi) {
                 logger.debug('[estimator] AI data received via subscription')
                 aiDataReceived = true
                 setAiStatus('ready')
@@ -388,38 +417,9 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             variables: { id: projectId },
           })
           const p = (immediate as GraphQLResponse)?.data?.getProject
-          if (p?.AI_estimatedCost) setAiEstimate(p.AI_estimatedCost)
-          if (p?.AI_estimatedTimeline) setAiTimeline(p.AI_estimatedTimeline)
-          if (p?.teamSize) {
-            setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
-            setFormState((prev) => ({ ...prev, selectedTeam: p.teamSize || '' }))
-          }
-          if (p?.AI_teamSize) setAiTeamSize(p.AI_teamSize)
-          if (p?.AI_timeline) {
-            try {
-              const parsed = JSON.parse(p.AI_timeline)
-              if (parsed && parsed.phases) setAiPhasesJson(p.AI_timeline)
-            } catch {}
-          }
-          if (p?.AI_timelineValidation) {
-            const pj = extractPhasesJsonFromText(p.AI_timelineValidation)
-            if (pj) setAiPhasesJson(pj)
-            setAiTimelineValidationRaw(p.AI_timelineValidation)
-          }
-          if (p?.scope) setFormState((prev) => ({ ...prev, scope: p.scope || '' }))
-          if (p?.AI_improvedScope) setAiImprovedScope(p.AI_improvedScope)
-          if (p?.AI_costAnalysis) setAiCostAnalysis(p.AI_costAnalysis)
-          if (p?.AI_infrastructure) setAiInfrastructure(p.AI_infrastructure)
-          if (p?.infrastructure) {
-            setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
-            setFormState((prev) => ({ ...prev, infrastructure: p.infrastructure || '' }))
-          }
-          if (p?.AI_infrastructureRecommendations)
-            setAiInfrastructureRecommendations(p.AI_infrastructureRecommendations)
-          if (p?.AI_riskAssessment) setAiRiskAssessment(p.AI_riskAssessment)
-          // Transition from loading to summary if AI data is already available
-          // Check multiple fields since AI_estimatedCost might remain null
-          if (p?.AI_costAnalysis || p?.AI_summary || p?.AI_estimatedCost) {
+          const hasImmediateAi = applyProjectToState(p)
+
+          if (hasImmediateAi) {
             logger.debug('[estimator] AI data already available on immediate fetch')
             aiDataReceived = true
             setAiStatus('ready')
@@ -463,54 +463,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           const project = updatedProject.data.getProject
 
           // Check multiple fields since AI_estimatedCost might remain null
-          if (project?.AI_costAnalysis || project?.AI_summary || project?.AI_estimatedCost) {
-            logger.debug('[estimator] Using AI-generated estimate:', project.AI_estimatedCost || 'N/A')
-            setAiEstimate(project.AI_estimatedCost || null)
-            if (project?.AI_estimatedTimeline) {
-              setAiTimeline(project.AI_estimatedTimeline)
-            }
-            if (project?.teamSize) {
-              setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
-              setFormState((prev) => ({ ...prev, selectedTeam: project.teamSize || '' }))
-            }
-            if (project?.AI_teamSize) {
-              setAiTeamSize(project.AI_teamSize)
-            }
-            if (project?.scope) {
-              setFormState((prev) => ({ ...prev, scope: project.scope || '' }))
-            }
-            if (project?.AI_improvedScope) {
-              setAiImprovedScope(project.AI_improvedScope)
-            }
-            if (project?.AI_costAnalysis) {
-              setAiCostAnalysis(project.AI_costAnalysis)
-            }
-            if (project?.AI_infrastructure) {
-              setAiInfrastructure(project.AI_infrastructure)
-            }
-            if (project?.infrastructure) {
-              setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
-              setFormState((prev) => ({ ...prev, infrastructure: project.infrastructure || '' }))
-            }
-            if (project?.AI_timelineValidation) {
-              const pj = extractPhasesJsonFromText(project.AI_timelineValidation)
-              if (pj) setAiPhasesJson(pj)
-              setAiTimelineValidationRaw(project.AI_timelineValidation)
-            }
-            if (project?.AI_timeline) {
-              try {
-                const parsed = JSON.parse(project.AI_timeline)
-                if (parsed && parsed.phases) {
-                  setAiPhasesJson(project.AI_timeline)
-                }
-              } catch {}
-            }
-            if (project?.AI_infrastructureRecommendations) {
-              setAiInfrastructureRecommendations(project.AI_infrastructureRecommendations)
-            }
-            if (project?.AI_riskAssessment) {
-              setAiRiskAssessment(project.AI_riskAssessment)
-            }
+          if (applyProjectToState(project)) {
             logger.debug('[estimator] AI data received via polling')
             aiDataReceived = true
             setAiStatus('ready')
@@ -557,34 +510,60 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       setStep('infrastructure')
       toast.error(e.message || 'We could not create your estimate. Please try again.', TOAST_OPTIONS)
     }
-  }, [formState, step, currentEstimate.cost, autoSelections])
+  }, [formState, step, currentEstimate.cost, autoSelections, applyProjectToState])
+
+  const advanceTo = useCallback((next: StepType) => {
+    if ((WIZARD_STEPS as readonly string[]).includes(next)) {
+      setMaxStepReached((prev) =>
+        WIZARD_STEPS.indexOf(next as WizardStep) > WIZARD_STEPS.indexOf(prev) ? (next as WizardStep) : prev
+      )
+    }
+    setStep(next)
+  }, [])
+
+  /**
+   * Jump back to an already-completed step to change an answer.
+   *
+   * Answers are preserved, so re-submitting creates a NEW project rather than
+   * editing the old one: the schema grants anonymous visitors create and read,
+   * not update (HN-11), and a shared link should keep showing the estimate it
+   * was created for.
+   */
+  const handleJumpToStep = useCallback(
+    (target: WizardStep) => {
+      if (WIZARD_STEPS.indexOf(target) > WIZARD_STEPS.indexOf(maxStepReached)) return
+      window.dataLayer?.push({ event: 'estimator_step_revisited', env, app_env: env, step: target })
+      setStep(target)
+    },
+    [maxStepReached]
+  )
 
   const handleNext = useCallback(() => {
     logger.debug('[estimator] Next clicked on step:', step)
     switch (step) {
       case 'start':
-        setStep('scope')
+        advanceTo('scope')
         break
       case 'scope':
         if (!formState.scope.trim()) {
           failStep('scope', 'Please describe your project so we can estimate it.')
           return
         }
-        setStep('timeline')
+        advanceTo('timeline')
         break
       case 'timeline':
         if (!autoSelections.timeline && !formState.timeline.trim()) {
           failStep('timeline', 'Tell us your target timeline, or tick Recommend for me.')
           return
         }
-        setStep('team')
+        advanceTo('team')
         break
       case 'team':
         if (!autoSelections.team && !formState.selectedTeam) {
           failStep('team', 'Choose a team size, or tick Recommend for me.')
           return
         }
-        setStep('infrastructure')
+        advanceTo('infrastructure')
         break
       case 'infrastructure':
         if (!autoSelections.infrastructure && !formState.infrastructure) {
@@ -594,7 +573,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         handleProjectSubmit()
         break
     }
-  }, [step, handleProjectSubmit, autoSelections, formState, failStep])
+  }, [step, handleProjectSubmit, autoSelections, formState, failStep, advanceTo, applyProjectToState])
 
   const handleBack = useCallback(() => {
     logger.debug('[estimator] Back clicked on step:', step)
@@ -640,6 +619,8 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     })
     setStepErrors({})
     setAiStatus('pending')
+    setRestoreFailed(false)
+    setMaxStepReached('scope')
     setAiEstimate(null)
     setAiTimeline(null)
     setAiPhasesJson(null)
@@ -650,7 +631,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     setAiInfrastructure(null)
     setAiInfrastructureRecommendations(null)
     setAiRiskAssessment(null)
-  }, [createInitialFormState])
+  }, [])
 
   /**
    * Re-runs the estimate with the same answers after a timeout or failure.
@@ -794,6 +775,44 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       }
 
       logger.debug('[estimator] lead created in HubSpot')
+
+      // Remember who this is so /book-a-meeting can prefill the scheduler.
+      // Same-origin, first-party, and only what the visitor just typed into a
+      // form on this site.
+      try {
+        localStorage.setItem(
+          'hypernova_contact',
+          JSON.stringify({
+            firstName: formState.firstName,
+            lastName: formState.lastName,
+            email: formState.emailAddress,
+          })
+        )
+      } catch {
+        // Storage disabled: prefill is a convenience, not a requirement.
+      }
+
+      // Send the copy only after the lead is recorded. The lead is the thing
+      // that matters commercially; the email is a courtesy, and it must never
+      // be the reason a submission appears to fail. The endpoint swallows its
+      // own transport errors for the same reason.
+      if (emailCopy && lastProjectId) {
+        fetch('/api/email-estimate/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estimateId: lastProjectId,
+            email: formState.emailAddress,
+            firstName: formState.firstName,
+            renderedAt: estimatorRenderedAt.current,
+          }),
+        })
+          .then(() => {
+            window.dataLayer?.push({ event: 'estimate_emailed', env, app_env: env, tracking_id: lastProjectId })
+          })
+          .catch((error) => logger.warn('[estimator] estimate email request failed', describeError(error)))
+      }
+
       toast.success("Thank you! We'll be in touch soon.", TOAST_OPTIONS)
     } catch (error: any) {
       logger.error('[estimator] Error creating lead:', error)
@@ -802,7 +821,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         TOAST_OPTIONS
       )
     }
-  }, [formState, lastProjectId])
+  }, [formState, lastProjectId, emailCopy])
 
   // Track form progress with GA4 events
   useEffect(() => {
@@ -882,35 +901,10 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           variables: { id: lastProjectId },
         })
         const p = (res as GraphQLResponse)?.data?.getProject
-        if (p?.AI_estimatedCost) setAiEstimate(p.AI_estimatedCost)
-        if (p?.AI_estimatedTimeline) setAiTimeline(p.AI_estimatedTimeline)
-        if (p?.teamSize) {
-          setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
-          setFormState((prev) => ({ ...prev, selectedTeam: p.teamSize || '' }))
-        }
-        if (p?.AI_teamSize) setAiTeamSize(p.AI_teamSize)
-        if (p?.scope) setFormState((prev) => ({ ...prev, scope: p.scope || '' }))
-        if (p?.AI_improvedScope) setAiImprovedScope(p.AI_improvedScope)
-        if (p?.AI_costAnalysis) setAiCostAnalysis(p.AI_costAnalysis)
-        if (p?.AI_timelineValidation) setAiTimelineValidationRaw(p.AI_timelineValidation)
-        const pj = extractPhasesJsonFromText(p?.AI_timelineValidation)
-        if (pj) setAiPhasesJson(pj)
-        if (p?.AI_timeline) {
-          try {
-            const parsed = JSON.parse(p.AI_timeline)
-            if (parsed && parsed.phases) setAiPhasesJson(p.AI_timeline)
-          } catch {}
-        }
-        if (p?.AI_infrastructure) setAiInfrastructure(p.AI_infrastructure)
-        if (p?.infrastructure) {
-          setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
-          setFormState((prev) => ({ ...prev, infrastructure: p.infrastructure || '' }))
-        }
-        if (p?.AI_infrastructureRecommendations) setAiInfrastructureRecommendations(p.AI_infrastructureRecommendations)
-        if (p?.AI_riskAssessment) setAiRiskAssessment(p.AI_riskAssessment)
+        const hasLateAi = applyProjectToState(p)
         // The refresher keeps running after a timeout, so a late analysis
         // still upgrades the summary and removes the banner without a reload.
-        if (p?.AI_costAnalysis || p?.AI_summary || p?.AI_estimatedCost) setAiStatus('ready')
+        if (hasLateAi) setAiStatus('ready')
       } catch {}
       if (!aiEstimate && attempts < 30 && step === 'summary') {
         timer = setTimeout(tick, 1000)
@@ -918,7 +912,96 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     }
     timer = setTimeout(tick, 500)
     return () => clearTimeout(timer)
-  }, [step, aiEstimate, lastProjectId])
+  }, [step, aiEstimate, lastProjectId, applyProjectToState])
+
+  /**
+   * HN-01: restore a finished estimate from /tools/ai-project-estimator/?estimate=<id>
+   *
+   * The id is a capability token -- anyone holding the link can read that
+   * estimate. That is deliberate: the visitor needs to forward it to whoever
+   * approves the budget, and the content is their own project description.
+   * It is also why the schema grants `get` but never `list` (HN-11): a link
+   * you were given is fine, enumerating everyone else's is not.
+   */
+  useEffect(() => {
+    if (!router.isReady) return
+
+    const raw = router.query.estimate
+    const id = Array.isArray(raw) ? raw[0] : raw
+    if (!id) return
+
+    // Do not re-restore the estimate we just created ourselves.
+    if (id === lastProjectId) return
+
+    // Cheap shape check before spending a network call on obvious rubbish.
+    if (!/^[a-zA-Z0-9-]{8,64}$/.test(id)) {
+      setRestoreFailed(true)
+      setStep('summary')
+      return
+    }
+
+    let cancelled = false
+    setStep('loading')
+
+    client
+      .graphql({ query: getProject, variables: { id } })
+      .then((res) => {
+        if (cancelled) return
+        const project = (res as GraphQLResponse)?.data?.getProject
+        if (!project) {
+          setRestoreFailed(true)
+          setStep('summary')
+          return
+        }
+        setLastProjectId(id)
+        setAiStatus(applyProjectToState(project) ? 'ready' : 'degraded')
+        setStep('summary')
+        window.dataLayer?.push({ event: 'estimate_resumed', env, app_env: env, tracking_id: id })
+      })
+      .catch((error) => {
+        if (cancelled) return
+        logger.warn('[estimator] could not restore estimate', describeError(error))
+        setRestoreFailed(true)
+        setStep('summary')
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // lastProjectId is deliberately omitted: including it would re-run this
+    // effect the moment we set it, immediately after a normal submission.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.estimate, applyProjectToState])
+
+  /**
+   * Puts the estimate id in the URL once the summary is reachable, using a
+   * shallow replace so React state survives. Without this the link only
+   * exists if the visitor thinks to press a button.
+   */
+  useEffect(() => {
+    if (step !== 'summary' || !lastProjectId || !router.isReady) return
+    if (router.query.estimate === lastProjectId) return
+
+    router.replace({ pathname: router.pathname, query: { ...router.query, estimate: lastProjectId } }, undefined, {
+      shallow: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, lastProjectId, router.isReady])
+
+  const handleCopyLink = useCallback(async () => {
+    if (!lastProjectId) return
+    const url = `${window.location.origin}${window.location.pathname}?estimate=${lastProjectId}`
+
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied. Anyone with it can view this estimate.', TOAST_OPTIONS)
+      window.dataLayer?.push({ event: 'estimate_link_copied', env, app_env: env, tracking_id: lastProjectId })
+    } catch {
+      // clipboard requires a secure context and a user gesture; both can fail
+      // in an embedded browser. Show the URL so it can be copied by hand.
+      toast.info(url, { ...TOAST_OPTIONS, autoClose: 15000 })
+    }
+  }, [lastProjectId])
 
   const cleanedTimelineValidation = useMemo(
     () => (aiTimelineValidationRaw ? removePhasesJsonFromText(aiTimelineValidationRaw) || null : null),
@@ -1042,6 +1125,69 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     return 'TBD'
   }, [aiInfrastructure, aiInfrastructureRecommendations, formState.infrastructure, autoSelections.infrastructure])
 
+  /**
+   * HN-03: build and download the estimate as a PDF.
+   *
+   * jsPDF is imported on demand so its ~350KB never lands in the initial
+   * bundle -- most visitors never reach the summary, and none of them should
+   * pay for a library they will not use.
+   */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!lastProjectId || isPreparingPdf) return
+    setIsPreparingPdf(true)
+
+    try {
+      const [{ jsPDF }, { drawEstimatePdf, buildPdfFilename }] = await Promise.all([
+        import('jspdf'),
+        import('../lib/estimatePdf'),
+      ])
+
+      let phases: { label: string; days: number }[] | undefined
+      if (aiPhasesJson) {
+        try {
+          phases = JSON.parse(aiPhasesJson)?.phases
+        } catch {
+          // Malformed phase JSON just means no chart, not a failed download.
+        }
+      }
+
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      drawEstimatePdf(doc as never, {
+        id: lastProjectId,
+        cost: displayedCost,
+        timeline: displayedTimeline,
+        hours: displayedHours,
+        team: displayedTeamSize,
+        infrastructure: displayedInfrastructure,
+        scope: aiImprovedScope || formState.scope,
+        risks: aiRiskAssessment,
+        phases,
+        isPreliminary: aiStatus !== 'ready',
+      })
+      doc.save(buildPdfFilename(lastProjectId))
+
+      window.dataLayer?.push({ event: 'estimate_pdf_downloaded', env, app_env: env, tracking_id: lastProjectId })
+    } catch (error) {
+      logger.error('[estimator] pdf generation failed', describeError(error))
+      toast.error('We could not build the PDF. The estimate link still works.', TOAST_OPTIONS)
+    } finally {
+      setIsPreparingPdf(false)
+    }
+  }, [
+    lastProjectId,
+    isPreparingPdf,
+    aiPhasesJson,
+    displayedCost,
+    displayedTimeline,
+    displayedHours,
+    displayedTeamSize,
+    displayedInfrastructure,
+    aiImprovedScope,
+    formState.scope,
+    aiRiskAssessment,
+    aiStatus,
+  ])
+
   const ganttChartContent = useMemo(() => {
     if (step !== 'summary') return null
     if (!aiPhasesJson && !aiTimeline) return null
@@ -1059,8 +1205,23 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           // are provisional.
           wrap: (node: React.ReactNode) => (
             <>
+              {restoreFailed ? <EstimateNotFound onStartOver={handleRestart} /> : null}
               {step === 'summary' || aiStatus === 'error' ? (
                 <EstimateStatusBanner status={aiStatus} onRetry={handleRetryEstimate} />
+              ) : null}
+              {step === 'summary' && lastProjectId && !restoreFailed ? (
+                <EstimateShareBar
+                  onCopyLink={handleCopyLink}
+                  onDownloadPdf={handleDownloadPdf}
+                  isPreparingPdf={isPreparingPdf}
+                />
+              ) : null}
+              {(WIZARD_STEPS as readonly string[]).includes(step) ? (
+                <EstimatorProgress
+                  current={step as WizardStep}
+                  maxReached={maxStepReached}
+                  onJumpToStep={handleJumpToStep}
+                />
               ) : null}
               {node}
             </>
@@ -1240,6 +1401,24 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           props: {
             onClick: handleContactSubmit,
           },
+          wrap: (node: React.ReactNode) => (
+            <>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  margin: '12px 0',
+                  fontSize: 14,
+                  color: 'rgba(255,255,255,0.8)',
+                  cursor: 'pointer',
+                }}>
+                <input type='checkbox' checked={emailCopy} onChange={(e) => setEmailCopy(e.target.checked)} />
+                Email me a copy of this estimate
+              </label>
+              {node}
+            </>
+          ),
         }}
         estimatedTimeline={displayedTimeline}
         estimatedHours={displayedHours}

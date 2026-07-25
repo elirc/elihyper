@@ -8,6 +8,7 @@ import { useRouter } from 'next/router'
 import { Amplify } from 'aws-amplify'
 import { PlasmicSplitsAppProvider } from '@/components/PlasmicExperimentTracking'
 import SeoHead from '@/components/SeoHead'
+import ConsentBanner from '@/components/ConsentBanner'
 // import { generateClient } from 'aws-amplify/api';
 
 // Load the correct Amplify config based on environment
@@ -129,6 +130,52 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     <PlasmicRootProvider Head={Head} Link={Link}>
       <Head>
         <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover' />
+        {/*
+          Google Consent Mode v2 defaults.
+
+          This must be the FIRST thing pushed to dataLayer, before the GTM
+          snippet loads. Consent Mode works by tags checking the current
+          consent state when they fire; if the default arrives after a tag,
+          that tag has already fired unconsented and the signal is pointless.
+
+          Everything defaults to denied. Consent is granted, never assumed.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function() {
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  window.gtag = window.gtag || gtag;
+
+  var stored = null;
+  try {
+    var m = document.cookie.match(/(?:^|; )hn_consent=([^;]*)/);
+    if (m) {
+      var parsed = JSON.parse(decodeURIComponent(m[1]));
+      if (parsed && parsed.version === 1) stored = parsed;
+    }
+  } catch (e) {}
+
+  var analytics = stored && stored.analytics === 'granted' ? 'granted' : 'denied';
+  var marketing = stored && stored.marketing === 'granted' ? 'granted' : 'denied';
+
+  gtag('consent', 'default', {
+    ad_storage: marketing,
+    ad_user_data: marketing,
+    ad_personalization: marketing,
+    analytics_storage: analytics,
+    wait_for_update: 500
+  });
+
+  // Read synchronously by the tag blocks below to decide whether to inject
+  // a third-party script at all. Consent Mode alone still loads the vendor
+  // JavaScript; not injecting it means no third-party request happens.
+  window.__HN_CONSENT__ = { analytics: analytics, marketing: marketing, decided: !!stored };
+})();
+            `,
+          }}
+        />
         {/* Deterministic astronaut experiment assignment BEFORE first paint (no SSR, no visible switching). */}
         <script
           dangerouslySetInnerHTML={{
@@ -229,7 +276,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         />
         {/*
           Per-route title, description, canonical and social tags now come from
-          <SeoHead /> below, driven by lib/seo.ts. The hard-coded Open Graph
+          <SeoHead />
+      <ConsentBanner /> below, driven by lib/seo.ts. The hard-coded Open Graph
           block that used to live here applied the same title and description
           to all 17 routes, so every page shared identically and competed with
           itself in search.
@@ -441,7 +489,7 @@ window.dataLayer.push({
 })();
               `,
           }}></script>
-        {/* Google Tag Manager */}
+        {/* Google Tag Manager -- injected only with analytics consent. */}
         {process.env.NEXT_PUBLIC_GTM_ID && (
           <script
             dangerouslySetInnerHTML={{
@@ -451,7 +499,7 @@ window.dataLayer.push({
                   ? '&' + process.env.NEXT_PUBLIC_GTM_AUTH_PARAMS
                   : ''
                 const debug = trackingDebugEnabled
-                return `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                return `if (window.__HN_CONSENT__ && window.__HN_CONSENT__.analytics === 'granted') (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl+'${gtmAuthParams}';
@@ -509,6 +557,9 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
       try { console.log('[LI] lintrk defined, env=', env); } catch (e) {}
     }
   }
+  // Marketing consent gates the network request itself, not just the events.
+  if (!window.__HN_CONSENT__ || window.__HN_CONSENT__.marketing !== 'granted') return;
+
   var s = document.getElementsByTagName("script")[0];
   var b = document.createElement("script");
   b.type = "text/javascript";
@@ -533,6 +584,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
           <script
             dangerouslySetInnerHTML={{
               __html: `
+                if (window.__HN_CONSENT__ && window.__HN_CONSENT__.marketing === 'granted')
                 !function(f,b,e,v,n,t,s)
                 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
                 n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -564,6 +616,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
           <script
             dangerouslySetInnerHTML={{
               __html: `
+                if (window.__HN_CONSENT__ && window.__HN_CONSENT__.marketing === 'granted')
                 !function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},
                 s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='//static.ads-twitter.com/uwt.js',
                 a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
@@ -586,6 +639,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
           </noscript>
         )}
       </Head>
+      {/* noscript pixel removed: it fires unconditionally and cannot honour consent. */}
       {/* Google Tag Manager (noscript) */}
       {process.env.NEXT_PUBLIC_GTM_ID && (
         <noscript>
@@ -600,6 +654,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
         </noscript>
       )}
       {/* End Google Tag Manager (noscript) */}
+      {/* noscript pixel removed: it fires unconditionally and cannot honour consent. */}
       {/* LinkedIn Insight Tag (noscript) */}
       {process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID && (
         <noscript>
@@ -614,6 +669,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
       )}
       {/* End LinkedIn Insight Tag (noscript) */}
       <SeoHead />
+      <ConsentBanner />
       <PlasmicSplitsAppProvider initialKnownValues={(pageProps as any)?.plasmicSplitKnownValues}>
         <Component {...pageProps} />
       </PlasmicSplitsAppProvider>

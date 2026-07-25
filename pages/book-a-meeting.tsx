@@ -6,6 +6,7 @@ import GlobalContextsProvider from '../components/plasmic/hypernova_inc/PlasmicG
 
 import { PlasmicBookAMeeting } from '../components/plasmic/hypernova_inc/PlasmicBookAMeeting'
 import { useRouter } from 'next/router'
+import MeetingScheduler from '../components/MeetingScheduler'
 
 function BookAMeeting() {
   // Use PlasmicBookAMeeting to render this component as it was
@@ -29,6 +30,14 @@ function BookAMeeting() {
     <GlobalContextsProvider>
       <PageParamsProvider__ route={useRouter()?.pathname} params={useRouter()?.query} query={useRouter()?.query}>
         <PlasmicBookAMeeting />
+        {/*
+          Rendered after the designed page rather than inside it: the Plasmic
+          page has no slot for a scheduler, and adding one would block this on
+          a design change. Move it into a named slot when a designer adds one.
+        */}
+        <div id='book-a-meeting-scheduler' style={{ padding: '0 0 64px' }}>
+          <MeetingScheduler />
+        </div>
       </PageParamsProvider__>
     </GlobalContextsProvider>
   )
