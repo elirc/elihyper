@@ -17,6 +17,7 @@ import {
   validateDescription,
   stripPromptInjectionTokens,
 } from '../lib/contactValidation'
+import { logger, describeError } from '../lib/logger'
 
 // Your component props start with props for variants and slots you defined
 // in Plasmic, but you can add more here, like event handlers that you can
@@ -57,7 +58,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Strip unwanted characters in real-time (only allow letters and hyphens)
     const sanitized = validateName(e.target.value, 'First name').sanitized
-    console.log('First name changed', sanitized)
     setFirstName(sanitized)
     // Clear error when user starts typing
     if (errors.firstName) {
@@ -67,7 +67,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Strip unwanted characters in real-time (only allow letters and hyphens)
     const sanitized = validateName(e.target.value, 'Last name').sanitized
-    console.log('Last name changed', sanitized)
     setLastName(sanitized)
     if (errors.lastName) {
       setErrors((prev) => ({ ...prev, lastName: '' }))
@@ -79,7 +78,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
       .replace(/[<>]/g, '') // Remove angle brackets
       .replace(/javascript:/gi, '') // Remove javascript protocol
       .replace(/on\w+=/gi, '') // Remove event handlers
-    console.log('Email changed', sanitized)
     setEmail(sanitized)
     if (errors.email) {
       setErrors((prev) => ({ ...prev, email: '' }))
@@ -88,7 +86,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Allow only digits, spaces, dashes, parentheses, dots, and plus sign
     const sanitized = e.target.value.replace(/[^\d\s\-\(\)\.\+]/g, '')
-    console.log('Number changed', sanitized)
     setNumber(sanitized)
     if (errors.number) {
       setErrors((prev) => ({ ...prev, number: '' }))
@@ -102,7 +99,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
         .replace(/javascript:/gi, '')
         .replace(/on\w+=/gi, '')
     )
-    console.log('Description changed', sanitized)
     setDescription(sanitized)
     if (errors.description) {
       setErrors((prev) => ({ ...prev, description: '' }))
@@ -141,7 +137,7 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault() // Prevent default form submission
 
-    console.log('Form submitted', firstName, lastName, email, number, description)
+    logger.debug('[contact-form] submit requested')
 
     // Validate and sanitize all fields
     const firstNameValidation = validateName(firstName, 'First name')
@@ -165,7 +161,7 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
     const hasErrors = Object.values(newErrors).some((error) => error !== '')
 
     if (hasErrors) {
-      console.log('Form has validation errors', newErrors)
+      logger.debug('[contact-form] blocked by validation', Object.keys(newErrors).filter((k) => newErrors[k as keyof typeof newErrors]))
       return
     }
 
@@ -186,7 +182,6 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
     setDescription(sanitizedData.description)
 
     // Form is valid, proceed with submission
-    console.log('Form is valid, submitting sanitized data...', sanitizedData)
 
     // Submit lead via GraphQL
     setIsSubmitting(true)
@@ -205,7 +200,7 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
         },
       })
 
-      console.log('Lead created successfully:', response)
+      logger.debug('[contact-form] lead created')
 
       // Show success toast
       toast.success("Thank you! Your information has been submitted successfully. We'll be in touch soon.", {
@@ -232,11 +227,9 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
         description: '',
       })
     } catch (error) {
-      console.error('Error submitting lead:', error)
-      // Log full error details for debugging
-      if (error && typeof error === 'object') {
-        console.error('Error details:', JSON.stringify(error, null, 2))
-      }
+      // Log the shape of the failure, never the payload -- the payload is
+      // the visitor's personal data.
+      logger.error('[contact-form] lead submission failed', describeError(error))
       toast.error('There was an error submitting your information. Please try again or contact us directly.', {
         position: 'bottom-right',
         autoClose: 5000,

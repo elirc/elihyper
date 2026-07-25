@@ -29,6 +29,7 @@ import {
   extractCostSummary,
   extractTimelineSummary,
 } from '../lib/aiTextParsing'
+import { logger, describeError } from '../lib/logger'
 
 const TOAST_OPTIONS = {
   position: 'bottom-right' as const,
@@ -152,7 +153,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   // State update handler
   const updateFormField = useCallback((field: keyof FormState, value: string) => {
-    console.log('DEBUG: Updating form field:', { field, value })
+    logger.debug('[estimator] Updating form field:', { field, value })
     setAutoSelections((prev) => {
       if (field === 'timeline' && prev.timeline) {
         return { ...prev, timeline: false }
@@ -190,7 +191,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   const handleProjectSubmit = useCallback(async () => {
     if (step !== 'infrastructure') {
-      console.log('DEBUG: Not on infrastructure step yet')
+      logger.debug('[estimator] Not on infrastructure step yet')
       return
     }
 
@@ -198,7 +199,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     let aiDataReceived = false
 
     try {
-      console.log('DEBUG: Submitting project data:', formState)
+      logger.debug('[estimator] submitting project')
       // Basic validation to avoid empty strings hitting DynamoDB
       const hasTimeline = autoSelections.timeline || !!formState.timeline.trim()
       const hasTeam = autoSelections.team || !!formState.selectedTeam
@@ -242,7 +243,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         })
 
       const projectId = result.data.createProject.id
-      console.log('Project created successfully with ID:', projectId)
+      logger.debug('[estimator] project created', projectId)
       setLastProjectId(projectId)
 
       // Show loading screen while AI processes the project
@@ -276,7 +277,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             next: ({ data }: SubscriptionMessage) => {
               const updated = data?.onUpdateProject
               if (!updated || updated.id !== projectId) return
-            console.log('DEBUG: Subscription update (matched id):', updated)
+              logger.debug('[estimator] subscription update received')
             if (updated.AI_estimatedCost) {
               setAiEstimate(updated.AI_estimatedCost)
             }
@@ -329,12 +330,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             // Transition from loading to summary when AI data arrives
             // Check multiple fields since AI_estimatedCost might remain null
             if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
-              console.log('DEBUG: AI data received via subscription')
+              logger.debug('[estimator] AI data received via subscription')
               aiDataReceived = true
               setStep('summary')
             }
           },
-          error: (err: Error) => console.error('Subscription error:', err),
+          error: (err: Error) => logger.error('[estimator] Subscription error:', err),
         })
         subscriptionRef.current = sub as unknown as { unsubscribe: () => void }
 
@@ -377,65 +378,41 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           // Transition from loading to summary if AI data is already available
           // Check multiple fields since AI_estimatedCost might remain null
           if (p?.AI_costAnalysis || p?.AI_summary || p?.AI_estimatedCost) {
-            console.log('DEBUG: AI data already available on immediate fetch')
+            logger.debug('[estimator] AI data already available on immediate fetch')
             aiDataReceived = true
             setStep('summary')
           }
         } catch {}
       } catch (subErr) {
-        console.error('Failed to start subscription:', subErr)
+        logger.error('[estimator] Failed to start subscription:', subErr)
       }
 
       // Fallback polling - only used if subscription fails to deliver
       const pollForSummary = async (attempts = 0) => {
         // Stop polling if AI data has already been received
         if (aiDataReceived) {
-          console.log('DEBUG: Polling stopped - AI data already received')
+          logger.debug('[estimator] Polling stopped - AI data already received')
           return
         }
 
         if (attempts >= 6) {
-          console.log('DEBUG: Max fallback polling attempts reached. Showing summary with available data.')
+          logger.debug('[estimator] Max fallback polling attempts reached. Showing summary with available data.')
           setStep('summary')
           return
         }
 
         try {
-          console.log('DEBUG: Fetching project details, attempt', attempts + 1)
+          logger.debug('[estimator] Fetching project details, attempt', attempts + 1)
           const updatedProject = await client.graphql({
             query: getProject,
             variables: { id: projectId },
           })
 
           const project = updatedProject.data.getProject
-          console.log('DEBUG: Project data:', {
-            id: project?.id,
-            AI_summary: project?.AI_summary,
-            AI_estimatedCost: project?.AI_estimatedCost,
-            AI_estimatedTimeline: project?.AI_estimatedTimeline,
-            scope: project?.scope,
-            timeline: project?.timeline,
-            teamSize: project?.teamSize,
-            AI_teamSize: project?.AI_teamSize,
-            AI_timeline: project?.AI_timeline,
-            AI_improvedScope: project?.AI_improvedScope,
-            AI_costAnalysis: project?.AI_costAnalysis,
-            AI_timelineValidation: project?.AI_timelineValidation,
-            AI_infrastructure: project?.AI_infrastructure,
-            AI_infrastructureRecommendations: project?.AI_infrastructureRecommendations,
-            AI_riskAssessment: project?.AI_riskAssessment,
-          })
 
           // Check multiple fields since AI_estimatedCost might remain null
           if (project?.AI_costAnalysis || project?.AI_summary || project?.AI_estimatedCost) {
-            console.log('DEBUG: Using AI-generated estimate:', project.AI_estimatedCost || 'N/A')
-            console.log('DEBUG: All AI analysis fields:', {
-              AI_improvedScope: project?.AI_improvedScope,
-              AI_costAnalysis: project?.AI_costAnalysis,
-              AI_timelineValidation: project?.AI_timelineValidation,
-              AI_infrastructureRecommendations: project?.AI_infrastructureRecommendations,
-              AI_riskAssessment: project?.AI_riskAssessment,
-            })
+            logger.debug('[estimator] Using AI-generated estimate:', project.AI_estimatedCost || 'N/A')
             setAiEstimate(project.AI_estimatedCost || null)
             if (project?.AI_estimatedTimeline) {
               setAiTimeline(project.AI_estimatedTimeline)
@@ -482,12 +459,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             if (project?.AI_riskAssessment) {
               setAiRiskAssessment(project.AI_riskAssessment)
             }
-            console.log('DEBUG: AI data received via polling')
+            logger.debug('[estimator] AI data received via polling')
             aiDataReceived = true
             setStep('summary')
             return
           } else {
-            console.log('DEBUG: AI data not ready yet (fallback polling), attempt:', attempts + 1)
+            logger.debug('[estimator] AI data not ready yet (fallback polling), attempt:', attempts + 1)
             // Only schedule next poll if data hasn't been received
             if (!aiDataReceived) {
               setTimeout(
@@ -497,7 +474,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             }
           }
         } catch (error) {
-          console.error('Error in fallback polling:', error)
+          logger.error('[estimator] Error in fallback polling:', error)
           // Only schedule next poll if data hasn't been received
           if (!aiDataReceived) {
             setTimeout(
@@ -512,20 +489,20 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       // This gives the subscription time to work (it's the preferred method)
       setTimeout(() => {
         if (!aiDataReceived) {
-          console.log("DEBUG: Subscription hasn't delivered after 15s - starting fallback polling")
+          logger.debug('[estimator] subscription silent after 15s, starting fallback polling')
           pollForSummary()
         } else {
-          console.log('DEBUG: No polling needed - subscription already delivered data')
+          logger.debug('[estimator] No polling needed - subscription already delivered data')
         }
       }, 15000)
     } catch (e: any) {
-      console.error('Error creating project:', e)
+      logger.error('[estimator] Error creating project:', e)
       alert(e.message || 'An error occurred while creating the project.')
     }
   }, [formState, step, currentEstimate.cost, autoSelections])
 
   const handleNext = useCallback(() => {
-    console.log('DEBUG: Next clicked on step:', step)
+    logger.debug('[estimator] Next clicked on step:', step)
     switch (step) {
       case 'start':
         setStep('scope')
@@ -562,7 +539,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   }, [step, handleProjectSubmit, autoSelections])
 
   const handleBack = useCallback(() => {
-    console.log('DEBUG: Back clicked on step:', step)
+    logger.debug('[estimator] Back clicked on step:', step)
     switch (step) {
       case 'scope':
         setStep('start')
@@ -586,12 +563,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   }, [step])
 
   const handleRestart = useCallback(() => {
-    console.log('DEBUG: Restarting estimator')
+    logger.debug('[estimator] Restarting estimator')
     if (subscriptionRef.current) {
       try {
         subscriptionRef.current.unsubscribe()
       } catch (error) {
-        console.error('Failed to unsubscribe during restart:', error)
+        logger.error('[estimator] Failed to unsubscribe during restart:', error)
       }
       subscriptionRef.current = null
     }
@@ -616,7 +593,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   }, [createInitialFormState])
 
   const handleStartEstimate = useCallback(() => {
-    console.log('DEBUG: Starting estimate')
+    logger.debug('[estimator] Starting estimate')
     window.dataLayer?.push({ event: 'estimator_started', env, app_env: env })
     setStep('scope')
   }, [])
@@ -637,7 +614,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   )
 
   const handleContactSubmit = useCallback(async () => {
-    console.log('DEBUG: Submitting contact information:', {
+    logger.debug('[estimator] Submitting contact information:', {
       firstName: formState.firstName,
       lastName: formState.lastName,
       emailAddress: formState.emailAddress,
@@ -739,17 +716,15 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         })
       } catch (dbError) {
         // Log but don't fail if local DB save fails - HubSpot is the primary system
-        console.warn('Failed to save lead to local database:', dbError)
-        // Log detailed error for debugging
-        if (dbError && typeof dbError === 'object') {
-          console.warn('DB Error details:', JSON.stringify(dbError, null, 2))
-        }
+        // HubSpot is the system of record for leads; the DynamoDB write is a
+        // secondary copy, so this is a warning rather than a failure.
+        logger.warn('[estimator] secondary lead write failed', describeError(dbError))
       }
 
-      console.log('Lead created successfully in HubSpot:', hubspotData)
+      logger.debug('[estimator] lead created in HubSpot')
       toast.success("Thank you! We'll be in touch soon.", TOAST_OPTIONS)
     } catch (error: any) {
-      console.error('Error creating lead:', error)
+      logger.error('[estimator] Error creating lead:', error)
       toast.error(
         error.message || 'An error occurred while submitting your information. Please try again.',
         TOAST_OPTIONS
@@ -759,9 +734,6 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
 
 
-  useEffect(() => {
-    console.log('DEBUG: Form state updated:', formState)
-  }, [formState])
 
   // Track form progress with GA4 events
   useEffect(() => {
