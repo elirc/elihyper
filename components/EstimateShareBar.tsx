@@ -2,6 +2,8 @@ import * as React from 'react'
 
 export interface EstimateShareBarProps {
   onCopyLink: () => void
+  onDownloadPdf: () => void
+  isPreparingPdf: boolean
 }
 
 /**
@@ -13,7 +15,7 @@ export interface EstimateShareBarProps {
  * needs to see the estimate is usually not the person looking at it -- it is
  * whoever signs off the budget.
  */
-export default function EstimateShareBar({ onCopyLink }: EstimateShareBarProps) {
+export default function EstimateShareBar({ onCopyLink, onDownloadPdf, isPreparingPdf }: EstimateShareBarProps) {
   return (
     <div
       style={{
@@ -33,23 +35,38 @@ export default function EstimateShareBar({ onCopyLink }: EstimateShareBarProps) 
       }}>
       <span>Keep this estimate — the link reopens it later, or share it with your team.</span>
 
-      <button
-        type='button'
-        onClick={onCopyLink}
-        style={{
-          padding: '9px 16px',
-          borderRadius: 8,
-          fontSize: 14,
-          cursor: 'pointer',
-          border: '1px solid rgba(0, 194, 255, 0.45)',
-          background: 'rgba(0, 194, 255, 0.18)',
-          color: '#ffffff',
-          whiteSpace: 'nowrap',
-        }}>
-        Copy link
-      </button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type='button' onClick={onCopyLink} style={actionStyle(false)}>
+          Copy link
+        </button>
+
+        <button
+          type='button'
+          onClick={onDownloadPdf}
+          // Disabled while generating: jsPDF is loaded on demand and the draw
+          // is synchronous, so a double click would otherwise queue a second
+          // download of the same file.
+          disabled={isPreparingPdf}
+          aria-busy={isPreparingPdf}
+          style={{ ...actionStyle(true), opacity: isPreparingPdf ? 0.6 : 1 }}>
+          {isPreparingPdf ? 'Preparing…' : 'Download PDF'}
+        </button>
+      </div>
     </div>
   )
+}
+
+function actionStyle(primary: boolean): React.CSSProperties {
+  return {
+    padding: '9px 16px',
+    borderRadius: 8,
+    fontSize: 14,
+    cursor: 'pointer',
+    border: '1px solid rgba(0, 194, 255, 0.45)',
+    background: primary ? 'rgba(0, 194, 255, 0.18)' : 'transparent',
+    color: '#ffffff',
+    whiteSpace: 'nowrap',
+  }
 }
 
 /**
