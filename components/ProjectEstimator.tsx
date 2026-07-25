@@ -511,10 +511,29 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         if (subscriptionRef.current) {
           subscriptionRef.current.unsubscribe()
         }
-        const sub = client.graphql({ query: onUpdateProject }).subscribe({
-          next: ({ data }: SubscriptionMessage) => {
-            const updated = data?.onUpdateProject
-            if (!updated || updated.id !== projectId) return
+        // Filter server-side, on the id we just created.
+        //
+        // Without `variables`, AppSync pushes EVERY project update to EVERY
+        // connected client, and the check below quietly discarded the ones
+        // that did not match. That meant each visitor's browser received every
+        // other visitor's scope text, cost analysis and risk assessment over
+        // the websocket. The client-side `if` was hiding a data leak, not
+        // preventing one.
+        //
+        // The generated subscription already accepted
+        // `$filter: ModelSubscriptionProjectFilterInput` -- it was simply
+        // never passed. The client-side check stays as defence in depth: a
+        // filter is a server we are trusting, and trusting one server is
+        // enough reason to keep a cheap local assertion.
+        const sub = client
+          .graphql({
+            query: onUpdateProject,
+            variables: { filter: { id: { eq: projectId } } },
+          })
+          .subscribe({
+            next: ({ data }: SubscriptionMessage) => {
+              const updated = data?.onUpdateProject
+              if (!updated || updated.id !== projectId) return
             console.log('DEBUG: Subscription update (matched id):', updated)
             if (updated.AI_estimatedCost) {
               setAiEstimate(updated.AI_estimatedCost)
