@@ -24,6 +24,8 @@
  * real leads.
  */
 
+import { createHash } from 'node:crypto'
+
 import { logger, describeError } from './logger'
 
 export interface RateLimitResult {
@@ -77,8 +79,6 @@ export function getClientIp(req: { headers: Headers }): string {
  * retaining the address.
  */
 function hashIdentifier(value: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createHash } = require('node:crypto')
   const salt = process.env.RATE_LIMIT_SALT || 'hypernova-default-salt'
   return createHash('sha256').update(`${salt}:${value}`).digest('hex').slice(0, 32)
 }
@@ -142,8 +142,16 @@ export class InMemoryRateLimitStore implements RateLimitStore {
  * ADD is atomic and creates the attribute when absent, so there is no
  * read-modify-write race and no need to seed the row first.
  */
+/**
+ * The minimum surface we use from DynamoDBClient. Declaring it here keeps the
+ * dynamic import honest without pulling the SDK's types into every build.
+ */
+interface DynamoLikeClient {
+  send(command: unknown): Promise<{ Attributes?: { count?: { N?: string } } }>
+}
+
 export class DynamoRateLimitStore implements RateLimitStore {
-  private clientPromise: Promise<any> | null = null
+  private clientPromise: Promise<DynamoLikeClient> | null = null
 
   constructor(
     private tableName: string,
@@ -155,7 +163,7 @@ export class DynamoRateLimitStore implements RateLimitStore {
       // Imported dynamically so a deployment that never sets
       // RATE_LIMIT_TABLE_NAME does not pay to load the SDK on every cold start.
       this.clientPromise = import('@aws-sdk/client-dynamodb').then(
-        ({ DynamoDBClient }) => new DynamoDBClient({ region: this.region })
+        ({ DynamoDBClient }) => new DynamoDBClient({ region: this.region }) as unknown as DynamoLikeClient
       )
     }
     return this.clientPromise

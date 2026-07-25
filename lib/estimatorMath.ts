@@ -89,7 +89,10 @@ export function computeTotalHours(teamKey: string, months: number): number {
   const roles = getTeamComposition(teamKey)
   if (!roles) return 0
 
-  return Object.values(roles).reduce<number>((total, count) => total + (count || 0) * months * HOURS_PER_PERSON_PER_MONTH, 0)
+  return Object.values(roles).reduce<number>(
+    (total, count) => total + (count || 0) * months * HOURS_PER_PERSON_PER_MONTH,
+    0
+  )
 }
 
 /**

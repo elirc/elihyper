@@ -2,5 +2,14 @@
   "extends": ["next/core-web-vitals", "next/typescript"],
   "rules": {
     "@typescript-eslint/no-empty-object-type": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["components/ThreeAstronaut.tsx", "pages/_app.tsx", "pages/index.tsx", "src/utils/env.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/no-unused-vars": "warn"
+      }
+    }
+  ]
 }

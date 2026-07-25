@@ -61,7 +61,8 @@ export function validateEmail(email: string): { valid: boolean; error?: string }
   }
 
   // More robust email validation regex
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+  const emailRegex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
   if (!emailRegex.test(trimmed)) {
     return { valid: false, error: 'Invalid email format' }
   }
@@ -174,4 +175,3 @@ export function validateOptionalString(
   const sanitized = sanitizeString(trimmed, maxLength)
   return { valid: true, sanitized: sanitized! }
 }
-

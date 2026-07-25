@@ -192,7 +192,10 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
     const hasErrors = Object.values(newErrors).some((error) => error !== '')
 
     if (hasErrors) {
-      logger.debug('[contact-form] blocked by validation', Object.keys(newErrors).filter((k) => newErrors[k as keyof typeof newErrors]))
+      logger.debug(
+        '[contact-form] blocked by validation',
+        Object.keys(newErrors).filter((k) => newErrors[k as keyof typeof newErrors])
+      )
       return
     }
 
@@ -386,11 +389,7 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
                 disabled people. Rendered through an existing slot so this
                 needs no Plasmic design change.
               */}
-              <input
-                {...honeypotFieldProps}
-                value={honeypotValue}
-                onChange={(e) => setHoneypotValue(e.target.value)}
-              />
+              <input {...honeypotFieldProps} value={honeypotValue} onChange={(e) => setHoneypotValue(e.target.value)} />
             </>
           ),
         }}

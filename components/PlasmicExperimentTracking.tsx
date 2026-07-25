@@ -186,4 +186,3 @@ function ClientSplitsProvider(props: React.PropsWithChildren) {
     </PlasmicSplitsProvider>
   )
 }
-

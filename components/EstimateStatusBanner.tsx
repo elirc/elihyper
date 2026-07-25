@@ -27,7 +27,7 @@ export default function EstimateStatusBanner({ status, onRetry }: EstimateStatus
 
   return (
     <div
-      role="status"
+      role='status'
       style={{
         margin: '0 auto 24px',
         maxWidth: 880,
@@ -51,11 +51,11 @@ export default function EstimateStatusBanner({ status, onRetry }: EstimateStatus
 
       <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {onRetry && (
-          <button type="button" onClick={onRetry} style={buttonStyle(true)}>
+          <button type='button' onClick={onRetry} style={buttonStyle(true)}>
             Try again
           </button>
         )}
-        <a href="/book-a-meeting/" style={buttonStyle(false)}>
+        <a href='/book-a-meeting/' style={buttonStyle(false)}>
           Talk to a human
         </a>
       </div>
