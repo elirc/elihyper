@@ -173,16 +173,45 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     setCookie(cookieName, v, maxAge);
   }
 
+  // Accessibility and capability override.
+  //
+  // `v` is the EXPERIMENT assignment and stays in the cookie either way, so a
+  // visitor is not silently re-randomised between visits. `effective` is what
+  // we actually render.
+  //
+  // Two reasons to override:
+  //  - prefers-reduced-motion: reduce. A continuously animating 3D figure is
+  //    exactly what that setting exists to prevent, and for some people
+  //    motion causes nausea or migraine, not mild annoyance.
+  //  - No WebGL. Rendering nothing is worse than the static hero we already
+  //    have; this also covers old devices and hardened browser configs.
+  var effective = v;
+  try {
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var hasWebgl = false;
+    try {
+      var probe = document.createElement('canvas');
+      hasWebgl = !!(window.WebGLRenderingContext && (probe.getContext('webgl') || probe.getContext('experimental-webgl')));
+    } catch (e) { hasWebgl = false; }
+    if (prefersReduced || !hasWebgl) effective = 'static';
+  } catch (e) {}
+
   // Gate visuals via CSS before first paint.
-  try { document.documentElement.setAttribute('data-astronaut-variant', v); } catch (e) {}
+  try { document.documentElement.setAttribute('data-astronaut-variant', effective); } catch (e) {}
   // Allow React to read synchronously on client.
-  try { window.__ASTRONAUT_VARIANT__ = v; } catch (e) {}
+  try { window.__ASTRONAUT_VARIANT__ = effective; } catch (e) {}
   // Make the assignment available to GTM/GA4 immediately (no event).
   // This ensures the first pageview + early interactions can be attributed to the right variant.
+  //
+  // Both values are reported. Analysing the experiment on `astronaut_variant`
+  // alone would attribute the static experience to the threejs arm for every
+  // visitor who was overridden, quietly polluting the result.
   try {
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       astronaut_variant: v,
+      astronaut_variant_effective: effective,
+      astronaut_variant_overridden: v !== effective,
       experiment_name: 'astronaut_hero',
     });
   } catch (e) {}
