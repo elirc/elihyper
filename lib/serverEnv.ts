@@ -44,6 +44,16 @@ export const SERVER_ENV_VARS: Record<string, ServerEnvVarSpec> = {
     description: 'Optional companion property flagging a contact as created from production.',
     source: 'Leave unset unless the HubSpot portal has such a property.',
   },
+  RATE_LIMIT_TABLE_NAME: {
+    required: false,
+    description: 'DynamoDB table backing the shared API rate limiter; falls back to a per-instance in-memory store.',
+    source: 'Provision with a String partition key `pk` and TTL enabled on the `ttl` attribute.',
+  },
+  RATE_LIMIT_SALT: {
+    required: false,
+    description: 'Salt used when hashing client IP addresses into rate-limit keys so raw IPs are never stored.',
+    source: 'Any long random string. Changing it resets all counters.',
+  },
 }
 
 /**
