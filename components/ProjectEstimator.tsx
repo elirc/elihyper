@@ -399,9 +399,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
               logger.debug('[estimator] subscription update received')
               const hasAi = applyProjectToState(updated)
 
-            // Transition from loading to summary when AI data arrives
-              // Check multiple fields since AI_estimatedCost might remain null
-              if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
+              if (hasAi) {
                 logger.debug('[estimator] AI data received via subscription')
                 aiDataReceived = true
                 setAiStatus('ready')
@@ -512,7 +510,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       setStep('infrastructure')
       toast.error(e.message || 'We could not create your estimate. Please try again.', TOAST_OPTIONS)
     }
-  }, [formState, step, currentEstimate.cost, autoSelections])
+  }, [formState, step, currentEstimate.cost, autoSelections, applyProjectToState])
 
   const advanceTo = useCallback((next: StepType) => {
     if ((WIZARD_STEPS as readonly string[]).includes(next)) {
@@ -575,7 +573,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         handleProjectSubmit()
         break
     }
-  }, [step, handleProjectSubmit, autoSelections, formState, failStep, advanceTo])
+  }, [step, handleProjectSubmit, autoSelections, formState, failStep, advanceTo, applyProjectToState])
 
   const handleBack = useCallback(() => {
     logger.debug('[estimator] Back clicked on step:', step)
@@ -633,7 +631,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     setAiInfrastructure(null)
     setAiInfrastructureRecommendations(null)
     setAiRiskAssessment(null)
-  }, [createInitialFormState])
+  }, [])
 
   /**
    * Re-runs the estimate with the same answers after a timeout or failure.
@@ -778,6 +776,22 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
       logger.debug('[estimator] lead created in HubSpot')
 
+      // Remember who this is so /book-a-meeting can prefill the scheduler.
+      // Same-origin, first-party, and only what the visitor just typed into a
+      // form on this site.
+      try {
+        localStorage.setItem(
+          'hypernova_contact',
+          JSON.stringify({
+            firstName: formState.firstName,
+            lastName: formState.lastName,
+            email: formState.emailAddress,
+          })
+        )
+      } catch {
+        // Storage disabled: prefill is a convenience, not a requirement.
+      }
+
       // Send the copy only after the lead is recorded. The lead is the thing
       // that matters commercially; the email is a courtesy, and it must never
       // be the reason a submission appears to fail. The endpoint swallows its
@@ -898,7 +912,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     }
     timer = setTimeout(tick, 500)
     return () => clearTimeout(timer)
-  }, [step, aiEstimate, lastProjectId])
+  }, [step, aiEstimate, lastProjectId, applyProjectToState])
 
   /**
    * HN-01: restore a finished estimate from /tools/ai-project-estimator/?estimate=<id>
@@ -968,11 +982,9 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     if (step !== 'summary' || !lastProjectId || !router.isReady) return
     if (router.query.estimate === lastProjectId) return
 
-    router.replace(
-      { pathname: router.pathname, query: { ...router.query, estimate: lastProjectId } },
-      undefined,
-      { shallow: true }
-    )
+    router.replace({ pathname: router.pathname, query: { ...router.query, estimate: lastProjectId } }, undefined, {
+      shallow: true,
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, lastProjectId, router.isReady])
 
