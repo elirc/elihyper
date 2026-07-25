@@ -9,6 +9,26 @@ import GanttChart from './GanttChart'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
+import {
+  ROLE_RATES,
+  HOURS_PER_PERSON_PER_MONTH,
+  parseTimelineToMonths,
+  getTeamComposition,
+  computeDefaultEstimate,
+  getTimelineRangeInMonths,
+  formatMonthsRange,
+  formatTeamSize,
+  formatInfrastructure,
+} from '../lib/estimatorMath'
+import {
+  extractPhasesJsonFromText,
+  removePhasesJsonFromText,
+  extractTeamSummary,
+  extractTeamCompositionDetails,
+  extractInfrastructureSummary,
+  extractCostSummary,
+  extractTimelineSummary,
+} from '../lib/aiTextParsing'
 
 const TOAST_OPTIONS = {
   position: 'bottom-right' as const,
@@ -18,17 +38,6 @@ const TOAST_OPTIONS = {
   pauseOnHover: true,
   draggable: true,
   theme: 'dark' as const,
-}
-
-interface TeamEstimate {
-  hours: string
-  cost: string
-}
-
-interface RoleRates {
-  seniorDev: { min: number; max: number }
-  midDev: { min: number; max: number }
-  designer: { min: number; max: number }
 }
 
 interface ProjectData {
@@ -121,274 +130,15 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     infrastructure: false,
   })
 
-  const extractPhasesJsonFromText = useCallback((text?: string | null) => {
-    if (!text) return null
-    const marker = 'PHASES_JSON:'
-    const idx = text.indexOf(marker)
-    if (idx === -1) return null
-    const start = text.indexOf('{', idx)
-    if (start === -1) return null
-    // Find matching closing brace for the JSON object
-    let depth = 0
-    for (let i = start; i < text.length; i++) {
-      const ch = text[i]
-      if (ch === '{') depth++
-      else if (ch === '}') {
-        depth--
-        if (depth === 0) {
-          const candidate = text.slice(start, i + 1).trim()
-          try {
-            const parsed = JSON.parse(candidate)
-            if (parsed && parsed.phases) return candidate
-          } catch {}
-          return null
-        }
-      }
-    }
-    return null
-  }, [])
-
-  const removePhasesJsonFromText = useCallback((text?: string | null) => {
-    if (!text) return text || null
-    const marker = 'PHASES_JSON:'
-    let result = text
-    while (true) {
-      const idx = result.indexOf(marker)
-      if (idx === -1) break
-      const start = result.indexOf('{', idx)
-      if (start === -1) {
-        result = result.slice(0, idx).trim()
-        break
-      }
-      let depth = 0
-      let end = -1
-      for (let i = start; i < result.length; i++) {
-        const ch = result[i]
-        if (ch === '{') depth++
-        else if (ch === '}') {
-          depth--
-          if (depth === 0) {
-            end = i
-            break
-          }
-        }
-      }
-      if (end !== -1) {
-        result = (result.slice(0, idx).trimEnd() + ' ' + result.slice(end + 1)).trim()
-      } else {
-        result = result.slice(0, idx).trim()
-        break
-      }
-    }
-    return result.trim()
-  }, [])
-
-  // Dynamic default estimate calculator (realistic baseline before AI)
-  const ROLE_RATES = useMemo(
-    () => ({
-      seniorDev: { min: 150, max: 200 },
-      midDev: { min: 100, max: 150 },
-      designer: { min: 100, max: 150 },
-    }),
-    []
-  )
-
-  const parseTimelineToMonths = useCallback((timeline: string): number => {
-    if (!timeline) return 12
-    const nums = (timeline.match(/\d+/g) || []).map((n) => parseInt(n, 10))
-    const hasYear = /year/i.test(timeline)
-    const hasMonth = /month/i.test(timeline)
-    const hasWeek = /week/i.test(timeline)
-    const hasDay = /day/i.test(timeline)
-    if (nums.length === 0) return hasYear ? 12 : 12
-    const n = nums.length === 1 ? nums[0] : Math.round((nums[0] + nums[1]) / 2)
-    if (hasYear) return n * 12
-    if (hasMonth) return n
-    if (hasWeek) return n / 4
-    if (hasDay) return n / 30
-    return n // fallback assume months
-  }, [])
-
-  const extractTeamSummary = useCallback((analysis?: string | null) => {
-    if (!analysis) return null
-    const match = analysis.match(/Development\s+Team\s*:\s*([^\n]+)/i) || analysis.match(/Team\s+Size\s*:\s*([^\n]+)/i)
-    if (match?.[1]) {
-      return match[1].replace(/^[\-\u2022]+\s*/, '').trim()
-    }
-    return null
-  }, [])
-
-  const extractTeamCompositionDetails = useCallback((analysis?: string | null) => {
-    if (!analysis) return null
-    const lines = analysis
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    for (const line of lines) {
-      if (!/(developer|designer|engineer|pm|devops)/i.test(line)) continue
-      // Skip lines that are about cost (contain dollar signs)
-      if (/\$/.test(line)) continue
-      const paren = line.match(/\(([^)]+)\)/)
-      if (paren?.[1]) {
-        return paren[1].trim()
-      }
-      const afterColon = line.split(':').slice(1).join(':').trim()
-      if (afterColon) {
-        return afterColon.replace(/^[\-\u2022]+\s*/, '')
-      }
-    }
-    return null
-  }, [])
-
-  const extractInfrastructureSummary = useCallback((text?: string | null) => {
-    if (!text) return null
-    const lines = text
-      .split(/\n+/)
-      .map((line) => line.replace(/^[\-\u2022]+\s*/, '').trim())
-      .filter(Boolean)
-    if (!lines.length) return null
-    const [first] = lines
-    const match = first.match(/(?:recommend(?:ed)?|infrastructure)\s*:?\s*(.+)/i)
-    return match?.[1]?.trim() || first
-  }, [])
-
-  const extractCostSummary = useCallback((analysis?: string | null) => {
-    if (!analysis) return null
-    const lines = analysis
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    const totalLine = lines.find((line) => /total/i.test(line) && /\$\d/.test(line))
-    if (totalLine) {
-      const afterColon = totalLine.split(':').slice(1).join(':').trim()
-      return afterColon || totalLine
-    }
-    const firstDollarLine = lines.find((line) => /\$\d/.test(line))
-    return firstDollarLine || null
-  }, [])
-
-  const extractTimelineSummary = useCallback((text?: string | null) => {
-    if (!text) return null
-    const lines = text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-    const totalLine = lines.find((line) => /^total\b/i.test(line))
-    if (totalLine) {
-      const cleaned = totalLine.replace(/^total[^:]*:\s*/i, '').trim()
-      return cleaned || totalLine
-    }
-    return lines[0] || null
-  }, [])
-
-  const getTimelineRangeInMonths = useCallback((text?: string | null) => {
-    if (!text) return null
-    const normalized = text.replace(/–|—|to/gi, '-')
-    const match = normalized.match(/(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*(day|week|month|year)/i)
-    if (!match) return null
-    const start = parseFloat(match[1])
-    const end = match[2] ? parseFloat(match[2]) : start
-    if (Number.isNaN(start) || Number.isNaN(end)) return null
-    const unit = match[3].toLowerCase()
-    const convert = (value: number) => {
-      switch (unit) {
-        case 'year':
-          return value * 12
-        case 'month':
-          return value
-        case 'week':
-          return value / 4
-        case 'day':
-          return value / 30
-        default:
-          return value
-      }
-    }
-    const minMonths = convert(Math.min(start, end))
-    const maxMonths = convert(Math.max(start, end))
-    if (minMonths <= 0 || maxMonths <= 0) return null
-    return { min: minMonths, max: maxMonths }
-  }, [])
-
-  const formatMonthsRange = useCallback((range?: { min: number; max: number } | null) => {
-    if (!range) return null
-    const formatSingle = (months: number) => {
-      if (months >= 12) {
-        const years = months / 12
-        return years % 1 === 0 ? `${years | 0} years` : `${years.toFixed(1)} years`
-      }
-      if (months >= 1) {
-        return months % 1 === 0 ? `${months | 0} months` : `${months.toFixed(1)} months`
-      }
-      const weeks = months * 4
-      if (weeks >= 1) {
-        return weeks % 1 === 0 ? `${weeks | 0} weeks` : `${weeks.toFixed(1)} weeks`
-      }
-      const days = Math.max(1, Math.round(months * 30))
-      return `${days} days`
-    }
-    const diff = Math.abs(range.max - range.min)
-    if (diff < 0.25) {
-      return formatSingle(range.max)
-    }
-    return `${formatSingle(range.min)} - ${formatSingle(range.max)}`
-  }, [])
-
-  const getTeamComposition = useCallback((teamKey: string): Record<string, number> | null => {
-    switch (teamKey) {
-      case '1Developer':
-        return { seniorDev: 1 }
-      case '2Developers':
-        return { seniorDev: 1, midDev: 1 }
-      case '2Developers1Designer':
-        return { seniorDev: 1, midDev: 1, designer: 1 }
-      case '4Developers1Designer':
-        return { seniorDev: 2, midDev: 2, designer: 1 }
-      default:
-        return null
-    }
-  }, [])
-
-  const computeDefaultEstimate = useCallback(
-    (teamKey: string, timeline: string): TeamEstimate => {
-      const roles = getTeamComposition(teamKey)
-      if (!roles) return { hours: 'TBD', cost: 'Calculating...' }
-      const months = parseTimelineToMonths(timeline || '12 months')
-      const hoursPerPersonPerMonth = 160
-
-      let minCost = 0
-      let maxCost = 0
-      let totalHours = 0
-      Object.entries(roles).forEach(([role, count]) => {
-        const c = count as number
-        const roleHours = c * months * hoursPerPersonPerMonth
-        totalHours += roleHours
-        const rates = ROLE_RATES[role as keyof RoleRates]
-        minCost += roleHours * rates.min
-        maxCost += roleHours * rates.max
-      })
-
-      // Present hours as a range (+/- 15%)
-      const lowHours = Math.round(totalHours * 0.85)
-      const highHours = Math.round(totalHours * 1.15)
-
-      const fmt = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-      const cost = `${fmt(Math.round(minCost))} - ${fmt(Math.round(maxCost))}`
-
-      return { hours: `${lowHours}-${highHours}`, cost }
-    },
-    [ROLE_RATES, getTeamComposition, parseTimelineToMonths]
-  )
 
   // Unified estimate: align hours with timeline (AI if present) and cost with AI when available
   const currentEstimate = useMemo(() => {
     const monthsForHours = parseTimelineToMonths(aiTimeline || formState.timeline)
     const roles = getTeamComposition(formState.selectedTeam)
-    const hoursPerPersonPerMonth = 160
     let totalHours = 0
     if (roles) {
       Object.entries(roles).forEach(([, count]) => {
-        totalHours += (count as number) * monthsForHours * hoursPerPersonPerMonth
+        totalHours += (count as number) * monthsForHours * HOURS_PER_PERSON_PER_MONTH
       })
     }
     const hoursRange = totalHours ? `${Math.round(totalHours * 0.85)}-${Math.round(totalHours * 1.15)}` : 'TBD'
@@ -398,15 +148,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     }
     const baseline = computeDefaultEstimate(formState.selectedTeam, formState.timeline)
     return { hours: hoursRange, cost: baseline.cost }
-  }, [
-    formState.selectedTeam,
-    formState.timeline,
-    aiEstimate,
-    aiTimeline,
-    computeDefaultEstimate,
-    getTeamComposition,
-    parseTimelineToMonths,
-  ])
+  }, [formState.selectedTeam, formState.timeline, aiEstimate, aiTimeline])
 
   // State update handler
   const updateFormField = useCallback((field: keyof FormState, value: string) => {
@@ -1015,24 +757,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     }
   }, [formState, lastProjectId])
 
-  const formatTeamSize = useCallback((team: string): string => {
-    const displayNames: Record<string, string> = {
-      '1Developer': '1 Developer',
-      '2Developers': '2 Developers',
-      '2Developers1Designer': '2 Developers + 1 Designer',
-      '4Developers1Designer': '4 Developers + 1 Designer',
-    }
-    return displayNames[team] || 'TBD'
-  }, [])
 
-  const formatInfrastructure = useCallback((infra: string): string => {
-    const displayNames: Record<string, string> = {
-      staticVm: 'Static Virtual Machine',
-      awsEphemeral: 'AWS Ephemeral Infrastructure',
-      kubernetes: 'Kubernetes Cluster',
-    }
-    return displayNames[infra] || 'TBD'
-  }, [])
 
   useEffect(() => {
     console.log('DEBUG: Form state updated:', formState)
@@ -1153,12 +878,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   const cleanedTimelineValidation = useMemo(
     () => (aiTimelineValidationRaw ? removePhasesJsonFromText(aiTimelineValidationRaw) || null : null),
-    [aiTimelineValidationRaw, removePhasesJsonFromText]
+    [aiTimelineValidationRaw]
   )
 
   const timelineSummaryFromAI = useMemo(
     () => extractTimelineSummary(cleanedTimelineValidation),
-    [cleanedTimelineValidation, extractTimelineSummary]
+    [cleanedTimelineValidation]
   )
 
   const timelineInsightFromPhases = useMemo(() => {
@@ -1185,11 +910,11 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     const extracted = extractCostSummary(aiCostAnalysis)
     if (extracted) return extracted
     return currentEstimate.cost
-  }, [aiEstimate, extractCostSummary, aiCostAnalysis, currentEstimate.cost])
+  }, [aiEstimate, aiCostAnalysis, currentEstimate.cost])
 
   const timelineRangeFromSummary = useMemo(
     () => (timelineSummaryFromAI ? getTimelineRangeInMonths(timelineSummaryFromAI) : null),
-    [timelineSummaryFromAI, getTimelineRangeInMonths]
+    [timelineSummaryFromAI]
   )
 
   const timelineRangeFromPhases = useMemo(
@@ -1199,24 +924,24 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   const timelineRangeFromAiTimeline = useMemo(
     () => (aiTimeline ? getTimelineRangeInMonths(aiTimeline) : null),
-    [aiTimeline, getTimelineRangeInMonths]
+    [aiTimeline]
   )
 
   const timelineRangeForHours = timelineRangeFromSummary || timelineRangeFromPhases || timelineRangeFromAiTimeline
 
   const timelineLabelFromPhases = useMemo(
     () => formatMonthsRange(timelineRangeFromPhases),
-    [timelineRangeFromPhases, formatMonthsRange]
+    [timelineRangeFromPhases]
   )
 
   const timelineLabelFromSummaryRange = useMemo(
     () => formatMonthsRange(timelineRangeFromSummary),
-    [timelineRangeFromSummary, formatMonthsRange]
+    [timelineRangeFromSummary]
   )
 
   const timelineLabelFromAiTimeline = useMemo(
     () => formatMonthsRange(timelineRangeFromAiTimeline),
-    [timelineRangeFromAiTimeline, formatMonthsRange]
+    [timelineRangeFromAiTimeline]
   )
 
   const displayedTimeline = useMemo(() => {
@@ -1228,16 +953,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     if (aiTimeline?.trim()) return aiTimeline.trim()
     if (autoSelections.timeline) return "We'll recommend a timeline for you."
     return formState.timeline || 'TBD'
-  }, [
-    timelineLabelFromPhases,
-    timelineLabelFromSummaryRange,
-    timelineLabelFromAiTimeline,
-    timelineInsightFromPhases,
-    timelineSummaryFromAI,
-    aiTimeline,
-    autoSelections.timeline,
-    formState.timeline,
-  ])
+  }, [timelineLabelFromPhases, timelineLabelFromSummaryRange, timelineLabelFromAiTimeline, timelineInsightFromPhases, timelineSummaryFromAI, aiTimeline, autoSelections.timeline, formState.timeline])
 
   const displayedHours = useMemo(() => {
     if (timelineRangeForHours) {
@@ -1256,7 +972,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   const teamDetailsFromAnalysis = useMemo(
     () => extractTeamCompositionDetails(aiCostAnalysis) || extractTeamSummary(aiCostAnalysis),
-    [extractTeamCompositionDetails, extractTeamSummary, aiCostAnalysis]
+    [aiCostAnalysis]
   )
 
   const displayedTeamSize = useMemo(() => {
@@ -1265,7 +981,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     if (formState.selectedTeam) return formatTeamSize(formState.selectedTeam)
     if (autoSelections.team) return "We'll recommend a team for you."
     return 'TBD'
-  }, [aiTeamSize, teamDetailsFromAnalysis, formState.selectedTeam, formatTeamSize, autoSelections.team])
+  }, [aiTeamSize, teamDetailsFromAnalysis, formState.selectedTeam, autoSelections.team])
 
   const displayedInfrastructure = useMemo(() => {
     if (aiInfrastructure?.trim()) return aiInfrastructure.trim()
@@ -1274,14 +990,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     if (formState.infrastructure) return formatInfrastructure(formState.infrastructure)
     if (autoSelections.infrastructure) return "We'll recommend the right infrastructure."
     return 'TBD'
-  }, [
-    aiInfrastructure,
-    extractInfrastructureSummary,
-    aiInfrastructureRecommendations,
-    formState.infrastructure,
-    formatInfrastructure,
-    autoSelections.infrastructure,
-  ])
+  }, [aiInfrastructure, aiInfrastructureRecommendations, formState.infrastructure, autoSelections.infrastructure])
 
   const ganttChartContent = useMemo(() => {
     if (step !== 'summary') return null
