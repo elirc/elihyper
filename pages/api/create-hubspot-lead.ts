@@ -62,8 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // Rate limiting - check before processing
-  const rateLimit = checkRateLimit(req)
+  // Rate limiting - check before processing.
+  // Now async: the store may be DynamoDB, shared across Lambda instances.
+  const rateLimit = await checkRateLimit(req, { bucket: 'create-hubspot-lead' })
   if (!rateLimit.allowed) {
     const resetSeconds = Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
     res.setHeader('X-RateLimit-Limit', '5')
