@@ -36,6 +36,30 @@ export interface ContactFormProps extends DefaultContactFormProps {
   style?: React.CSSProperties
 }
 
+/**
+ * Reads the UTM/tracking context pages/_app.tsx stores in localStorage, so a
+ * lead can be attributed to the campaign that produced it. Returns an empty
+ * object when storage is unavailable (private mode, storage disabled) rather
+ * than failing the submission -- attribution is nice to have, the lead is not.
+ */
+function readTrackingContext(): Record<string, string | undefined> {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('hypernova_tracking') : null
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return {
+      tracking_id_uuid: parsed.tracking_id || undefined,
+      utm_source: parsed.utm_source || undefined,
+      utm_medium: parsed.utm_medium || undefined,
+      utm_campaign: parsed.utm_campaign || undefined,
+      utm_content: parsed.utm_content || undefined,
+      utm_term: parsed.utm_term || undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
 function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -183,21 +207,69 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
 
     // Form is valid, proceed with submission
 
-    // Submit lead via GraphQL
     setIsSubmitting(true)
     try {
-      const response = await client.graphql({
-        query: createLead,
-        variables: {
-          input: {
-            email: sanitizedData.email,
-            firstName: sanitizedData.firstName,
-            lastName: sanitizedData.lastName,
-            phoneNumber: sanitizedData.number,
-            description: sanitizedData.description || undefined,
-            environment: env,
+      // HubSpot is the system of record: this form previously wrote only to
+      // DynamoDB, so leads from the site's main contact form never reached the
+      // CRM and sales never saw them. The estimator's contact step has always
+      // posted here; both paths now behave the same way.
+      //
+      // Keep the trailing slash. next.config.mjs sets trailingSlash: true, and
+      // without it the POST is redirected and the body is dropped.
+      const response = await fetch('/api/create-hubspot-lead/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: sanitizedData.firstName,
+          lastName: sanitizedData.lastName,
+          email: sanitizedData.email,
+          phoneNumber: sanitizedData.number,
+          message: sanitizedData.description || undefined,
+          environment: env,
+          source: 'contact_form',
+          ...readTrackingContext(),
+        }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        // 429 deserves its own message: "try again" is actionable, whereas the
+        // generic failure text invites the visitor to retry immediately and be
+        // rejected again.
+        throw new Error(
+          response.status === 429
+            ? 'Too many submissions from this network. Please try again in a few minutes.'
+            : result.error || 'Failed to submit your information'
+        )
+      }
+
+      // Secondary copy in DynamoDB. Best-effort by design: HubSpot has already
+      // accepted the lead, so failing the visitor's submission over a
+      // duplicate record would be the wrong trade.
+      try {
+        await client.graphql({
+          query: createLead,
+          variables: {
+            input: {
+              email: sanitizedData.email,
+              firstName: sanitizedData.firstName,
+              lastName: sanitizedData.lastName,
+              phoneNumber: sanitizedData.number,
+              description: sanitizedData.description || undefined,
+              environment: env,
+            },
           },
-        },
+        })
+      } catch (dbError) {
+        logger.warn('[contact-form] secondary lead write failed', describeError(dbError))
+      }
+
+      window.dataLayer?.push({
+        event: 'contact_form_submitted',
+        env,
+        app_env: env,
+        source: 'contact_form',
       })
 
       logger.debug('[contact-form] lead created')
@@ -230,7 +302,7 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
       // Log the shape of the failure, never the payload -- the payload is
       // the visitor's personal data.
       logger.error('[contact-form] lead submission failed', describeError(error))
-      toast.error('There was an error submitting your information. Please try again or contact us directly.', {
+      toast.error(error instanceof Error ? error.message : 'There was an error submitting your information.', {
         position: 'bottom-right',
         autoClose: 5000,
         hideProgressBar: false,
