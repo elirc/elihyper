@@ -57,6 +57,11 @@ jobs:
       - name: Check formatting and lint
         run: npm run lint:ci
 
+      # A green test run does not mean the app compiles: nothing imports
+      # pages/_app.tsx, so a syntax error there passed 194 tests once.
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+
       - name: Run tests
         run: npm test
 
