@@ -1,4 +1,5 @@
 import * as React from 'react'
+import Link from 'next/link'
 
 export type AiStatus = 'pending' | 'ready' | 'degraded' | 'error'
 
@@ -55,9 +56,9 @@ export default function EstimateStatusBanner({ status, onRetry }: EstimateStatus
             Try again
           </button>
         )}
-        <a href='/book-a-meeting/' style={buttonStyle(false)}>
+        <Link href='/book-a-meeting/' style={buttonStyle(false)}>
           Talk to a human
-        </a>
+        </Link>
       </div>
     </div>
   )

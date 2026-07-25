@@ -5,7 +5,17 @@
   },
   "overrides": [
     {
-      "files": ["components/ThreeAstronaut.tsx", "pages/_app.tsx", "pages/index.tsx", "src/utils/env.ts"],
+      "files": [
+        "components/ThreeAstronaut.tsx",
+        "components/ProjectEstimator.tsx",
+        "components/Section.tsx",
+        "components/PlasmicExperimentTracking.tsx",
+        "components/HypernovaButton.tsx",
+        "components/HypernovaLinkButton.tsx",
+        "pages/_app.tsx",
+        "pages/index.tsx",
+        "src/utils/env.ts"
+      ],
       "rules": {
         "@typescript-eslint/no-explicit-any": "warn",
         "@typescript-eslint/no-unused-vars": "warn"
