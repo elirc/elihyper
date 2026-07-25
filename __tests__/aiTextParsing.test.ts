@@ -135,7 +135,11 @@ describe('extractTeamCompositionDetails', () => {
   // Cost lines mention roles too; picking one up here would display a price
   // where the visitor expects a headcount.
   it('skips lines containing costs', () => {
-    const analysis = `- Senior Developer: $150,000\nTeam composition (1 senior, 1 mid)`
+    // Note the candidate line must itself mention a role: the function only
+    // examines lines matching /developer|designer|engineer|pm|devops/, so a
+    // line reading "Team composition (...)" is never considered at all. That
+    // is easy to trip over when writing the enrichment worker's prompt.
+    const analysis = `- Senior Developer: $150,000\nDevelopers (1 senior, 1 mid)`
 
     expect(extractTeamCompositionDetails(analysis)).toBe('1 senior, 1 mid')
   })

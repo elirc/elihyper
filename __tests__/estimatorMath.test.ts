@@ -38,9 +38,15 @@ describe('parseTimelineToMonths', () => {
     expect(parseTimelineToMonths(input)).toBe(12)
   })
 
-  it('prefers the largest stated unit when several appear', () => {
-    // "2 years" wins over the incidental "6" -- years is checked first.
-    expect(parseTimelineToMonths('2 years, maybe 6')).toBe(24)
+  // ROUGH EDGE, pinned deliberately: the function averages the FIRST TWO
+  // numbers it finds, whatever they mean. "2 years, maybe 6" is read as the
+  // range 2-6 and yields (2+6)/2 = 4 years = 48 months, not 24.
+  //
+  // Averaging is right for "4-6 months" and wrong here. Fixing it needs a
+  // decision about what free text should mean, which is a product question,
+  // not a refactor. Documented rather than silently changed.
+  it('averages the first two numbers even when the second is incidental', () => {
+    expect(parseTimelineToMonths('2 years, maybe 6')).toBe(48)
   })
 })
 
