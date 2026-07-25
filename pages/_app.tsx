@@ -175,9 +175,12 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   // Accessibility and capability override.
   //
-  // `v` is the EXPERIMENT assignment and stays in the cookie either way, so a
-  // visitor is not silently re-randomised between visits. `effective` is what
-  // we actually render.
+  // NOTE: no backticks in this comment -- it lives inside a JS template
+  // literal, and a backtick here terminates the literal and breaks the file.
+  //
+  // The variable v is the EXPERIMENT assignment and stays in the cookie either
+  // way, so a visitor is not silently re-randomised between visits. The
+  // variable "effective" is what we actually render.
   //
   // Two reasons to override:
   //  - prefers-reduced-motion: reduce. A continuously animating 3D figure is
@@ -203,7 +206,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   // Make the assignment available to GTM/GA4 immediately (no event).
   // This ensures the first pageview + early interactions can be attributed to the right variant.
   //
-  // Both values are reported. Analysing the experiment on `astronaut_variant`
+  // Both values are reported. Analysing the experiment on astronaut_variant
   // alone would attribute the static experience to the threejs arm for every
   // visitor who was overridden, quietly polluting the result.
   try {
