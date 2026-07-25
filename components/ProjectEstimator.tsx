@@ -6,6 +6,7 @@ import { createProject, createLead } from '../src/graphql/mutations'
 import { getProject } from '../src/graphql/queries'
 import { onUpdateProject } from '../src/graphql/subscriptions'
 import GanttChart from './GanttChart'
+import FieldError from './FieldError'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
@@ -131,6 +132,25 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     infrastructure: false,
   })
 
+  // Per-step validation messages. Replaces six window.alert() calls: a native
+  // dialog is unstyled, untranslatable, invisible to analytics, and announced
+  // with no association to the field it is complaining about.
+  const [stepErrors, setStepErrors] = useState<Partial<Record<StepType, string>>>({})
+
+  const failStep = useCallback((stepName: StepType, message: string) => {
+    setStepErrors((prev) => ({ ...prev, [stepName]: message }))
+    window.dataLayer?.push({
+      event: 'estimator_validation_error',
+      env,
+      app_env: env,
+      step: stepName,
+    })
+  }, [])
+
+  const clearStepError = useCallback((stepName: StepType) => {
+    setStepErrors((prev) => (prev[stepName] ? { ...prev, [stepName]: undefined } : prev))
+  }, [])
+
 
   // Unified estimate: align hours with timeline (AI if present) and cost with AI when available
   const currentEstimate = useMemo(() => {
@@ -153,6 +173,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   // State update handler
   const updateFormField = useCallback((field: keyof FormState, value: string) => {
+    // Clear on change rather than on the next submit attempt, so the message
+    // disappears the moment the visitor addresses it.
+    if (field === 'scope') clearStepError('scope')
+    if (field === 'timeline') clearStepError('timeline')
+    if (field === 'selectedTeam') clearStepError('team')
+    if (field === 'infrastructure') clearStepError('infrastructure')
     logger.debug('[estimator] Updating form field:', { field, value })
     setAutoSelections((prev) => {
       if (field === 'timeline' && prev.timeline) {
@@ -170,9 +196,10 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       ...prev,
       [field]: value,
     }))
-  }, [])
+  }, [clearStepError])
 
   const handleRecommendationToggle = useCallback((key: 'timeline' | 'team' | 'infrastructure', value: boolean) => {
+    if (value) clearStepError(key)
     setAutoSelections((prev) => {
       if (prev[key] === value) return prev
       return { ...prev, [key]: value }
@@ -187,7 +214,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         setFormState((prev) => ({ ...prev, infrastructure: '' }))
       }
     }
-  }, [])
+  }, [clearStepError])
 
   const handleProjectSubmit = useCallback(async () => {
     if (step !== 'infrastructure') {
@@ -206,7 +233,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       const hasInfrastructure = autoSelections.infrastructure || !!formState.infrastructure
 
       if (!formState.scope || !hasTimeline || !hasTeam || !hasInfrastructure) {
-        alert('Please complete all steps before submitting the project.')
+        toast.error('Please complete all steps before submitting the project.', TOAST_OPTIONS)
         return
       }
 
@@ -497,7 +524,10 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       }, 15000)
     } catch (e: any) {
       logger.error('[estimator] Error creating project:', e)
-      alert(e.message || 'An error occurred while creating the project.')
+      // Stay on the infrastructure step with the answers intact rather than
+      // dropping the visitor into an empty summary.
+      setStep('infrastructure')
+      toast.error(e.message || 'We could not create your estimate. Please try again.', TOAST_OPTIONS)
     }
   }, [formState, step, currentEstimate.cost, autoSelections])
 
@@ -509,34 +539,34 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         break
       case 'scope':
         if (!formState.scope.trim()) {
-          alert('Please describe your scope to continue.')
+          failStep('scope', 'Please describe your project so we can estimate it.')
           return
         }
         setStep('timeline')
         break
       case 'timeline':
         if (!autoSelections.timeline && !formState.timeline.trim()) {
-          alert('Please provide a desired timeline to continue.')
+          failStep('timeline', 'Tell us your target timeline, or tick Recommend for me.')
           return
         }
         setStep('team')
         break
       case 'team':
         if (!autoSelections.team && !formState.selectedTeam) {
-          alert('Please select a team size.')
+          failStep('team', 'Choose a team size, or tick Recommend for me.')
           return
         }
         setStep('infrastructure')
         break
       case 'infrastructure':
         if (!autoSelections.infrastructure && !formState.infrastructure) {
-          alert('Please choose an infrastructure option.')
+          failStep('infrastructure', 'Choose an infrastructure option, or tick Recommend for me.')
           return
         }
         handleProjectSubmit()
         break
     }
-  }, [step, handleProjectSubmit, autoSelections])
+  }, [step, handleProjectSubmit, autoSelections, formState, failStep])
 
   const handleBack = useCallback(() => {
     logger.debug('[estimator] Back clicked on step:', step)
@@ -580,6 +610,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       team: false,
       infrastructure: false,
     })
+    setStepErrors({})
     setAiEstimate(null)
     setAiTimeline(null)
     setAiPhasesJson(null)
@@ -985,14 +1016,33 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           props: {
             value: formState.scope,
             onChange: (e: FormEvent) => updateFormField('scope', e.target.value),
+            'aria-invalid': stepErrors.scope ? true : undefined,
+            'aria-describedby': stepErrors.scope ? 'estimator-error-scope' : undefined,
           },
+          // `wrap` attaches the message to a designed node without editing the
+          // generated Plasmic component -- the same technique the homepage
+          // uses to inject the 3D astronaut around the hero.
+          wrap: (node: React.ReactNode) => (
+            <>
+              {node}
+              <FieldError id='estimator-error-scope' message={stepErrors.scope} />
+            </>
+          ),
         }}
         timelineTextInput={{
           props: {
             value: formState.timeline,
             onChange: (e: FormEvent) => updateFormField('timeline', e.target.value),
             disabled: autoSelections.timeline,
+            'aria-invalid': stepErrors.timeline ? true : undefined,
+            'aria-describedby': stepErrors.timeline ? 'estimator-error-timeline' : undefined,
           },
+          wrap: (node: React.ReactNode) => (
+            <>
+              {node}
+              <FieldError id='estimator-error-timeline' message={stepErrors.timeline} />
+            </>
+          ),
         }}
         checkbox={{
           props: {
@@ -1105,6 +1155,15 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           props: {
             onClick: handleNext,
           },
+          // The team and infrastructure steps are card grids with no single
+          // input to describe, so their message goes beside the button the
+          // visitor just pressed -- which is where their attention already is.
+          wrap: (node: React.ReactNode) => (
+            <>
+              {node}
+              <FieldError id='estimator-error-selection' message={stepErrors.team || stepErrors.infrastructure} />
+            </>
+          ),
         }}
         backButton={{
           props: {
