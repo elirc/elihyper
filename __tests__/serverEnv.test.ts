@@ -11,14 +11,15 @@
  * rendered too.
  */
 
-const {
+import {
   findMissingRequiredEnv,
   requireEnv,
   optionalEnv,
   logServerEnvStatus,
   MissingEnvironmentVariableError,
   SERVER_ENV_VARS,
-} = require('../lib/serverEnv')
+  type ServerEnvVarSpec,
+} from '../lib/serverEnv'
 
 describe('findMissingRequiredEnv', () => {
   it('reports nothing when every required variable is set', () => {
@@ -60,11 +61,14 @@ describe('requireEnv', () => {
       requireEnv('HUBSPOT_API_KEY', {})
       throw new Error('expected requireEnv to throw')
     } catch (error) {
-      expect(error.variableName).toBe('HUBSPOT_API_KEY')
+      // `catch` gives `unknown`; narrow before asserting on the shape.
+      expect(error).toBeInstanceOf(MissingEnvironmentVariableError)
+      const missing = error as MissingEnvironmentVariableError
+      expect(missing.variableName).toBe('HUBSPOT_API_KEY')
       // The message has to be actionable on its own -- someone reading it in a
       // log at 2am should not have to open the codebase.
-      expect(error.message).toContain('HUBSPOT_API_KEY')
-      expect(error.message).toContain('HubSpot')
+      expect(missing.message).toContain('HUBSPOT_API_KEY')
+      expect(missing.message).toContain('HubSpot')
     }
   })
 })
@@ -109,7 +113,7 @@ describe('SERVER_ENV_VARS', () => {
   // Documentation drifts silently unless something checks it. This fails the
   // build if a variable is added without explaining what it is for.
   it('describes every variable and where to obtain it', () => {
-    for (const [name, spec] of Object.entries(SERVER_ENV_VARS)) {
+    for (const [name, spec] of Object.entries(SERVER_ENV_VARS) as [string, ServerEnvVarSpec][]) {
       expect(typeof spec.description).toBe('string')
       expect(spec.description.length).toBeGreaterThan(20)
       expect(spec.source.length).toBeGreaterThan(10)

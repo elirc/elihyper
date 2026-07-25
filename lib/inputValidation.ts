@@ -98,6 +98,32 @@ export function validatePhoneNumber(phone: string | undefined): { valid: boolean
 }
 
 /**
+ * Unicode-aware name rule, kept identical to lib/contactValidation's
+ * NAME_PATTERN. Browser-side validation is a user-experience feature; a caller
+ * that skips the form skips it entirely, so the server applies the same rule.
+ */
+export const NAME_PATTERN = /^[\p{L}\p{M}'’\-. ]+$/u
+
+/**
+ * Validate a person's name: required, length-capped, and restricted to
+ * characters that appear in real names.
+ */
+export function validateName(
+  value: string | undefined,
+  fieldName: string,
+  maxLength: number
+): { valid: boolean; error?: string; sanitized?: string } {
+  const base = validateRequiredString(value, fieldName, maxLength)
+  if (!base.valid) return base
+
+  if (!NAME_PATTERN.test(base.sanitized as string)) {
+    return { valid: false, error: `${fieldName} contains characters we can't accept` }
+  }
+
+  return base
+}
+
+/**
  * Validate required string field
  */
 export function validateRequiredString(
