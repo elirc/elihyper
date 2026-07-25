@@ -20,7 +20,7 @@ function NavigationLink_(props: NavigationLinkProps, ref: HTMLElementRefOf<'butt
         if (anchorId && typeof document !== 'undefined') {
           // Update URL hash first
           window.history.pushState(null, '', `#${anchorId}`)
-          
+
           // Use multiple requestAnimationFrame calls to ensure this happens
           // after any scroll restoration code has finished
           requestAnimationFrame(() => {

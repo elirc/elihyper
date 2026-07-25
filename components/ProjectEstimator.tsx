@@ -161,7 +161,6 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     setStepErrors((prev) => (prev[stepName] ? { ...prev, [stepName]: undefined } : prev))
   }, [])
 
-
   // Unified estimate: align hours with timeline (AI if present) and cost with AI when available
   const currentEstimate = useMemo(() => {
     const monthsForHours = parseTimelineToMonths(aiTimeline || formState.timeline)
@@ -182,49 +181,55 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   }, [formState.selectedTeam, formState.timeline, aiEstimate, aiTimeline])
 
   // State update handler
-  const updateFormField = useCallback((field: keyof FormState, value: string) => {
-    // Clear on change rather than on the next submit attempt, so the message
-    // disappears the moment the visitor addresses it.
-    if (field === 'scope') clearStepError('scope')
-    if (field === 'timeline') clearStepError('timeline')
-    if (field === 'selectedTeam') clearStepError('team')
-    if (field === 'infrastructure') clearStepError('infrastructure')
-    logger.debug('[estimator] Updating form field:', { field, value })
-    setAutoSelections((prev) => {
-      if (field === 'timeline' && prev.timeline) {
-        return { ...prev, timeline: false }
-      }
-      if (field === 'selectedTeam' && prev.team) {
-        return { ...prev, team: false }
-      }
-      if (field === 'infrastructure' && prev.infrastructure) {
-        return { ...prev, infrastructure: false }
-      }
-      return prev
-    })
-    setFormState((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }, [clearStepError])
+  const updateFormField = useCallback(
+    (field: keyof FormState, value: string) => {
+      // Clear on change rather than on the next submit attempt, so the message
+      // disappears the moment the visitor addresses it.
+      if (field === 'scope') clearStepError('scope')
+      if (field === 'timeline') clearStepError('timeline')
+      if (field === 'selectedTeam') clearStepError('team')
+      if (field === 'infrastructure') clearStepError('infrastructure')
+      logger.debug('[estimator] Updating form field:', { field, value })
+      setAutoSelections((prev) => {
+        if (field === 'timeline' && prev.timeline) {
+          return { ...prev, timeline: false }
+        }
+        if (field === 'selectedTeam' && prev.team) {
+          return { ...prev, team: false }
+        }
+        if (field === 'infrastructure' && prev.infrastructure) {
+          return { ...prev, infrastructure: false }
+        }
+        return prev
+      })
+      setFormState((prev) => ({
+        ...prev,
+        [field]: value,
+      }))
+    },
+    [clearStepError]
+  )
 
-  const handleRecommendationToggle = useCallback((key: 'timeline' | 'team' | 'infrastructure', value: boolean) => {
-    if (value) clearStepError(key)
-    setAutoSelections((prev) => {
-      if (prev[key] === value) return prev
-      return { ...prev, [key]: value }
-    })
+  const handleRecommendationToggle = useCallback(
+    (key: 'timeline' | 'team' | 'infrastructure', value: boolean) => {
+      if (value) clearStepError(key)
+      setAutoSelections((prev) => {
+        if (prev[key] === value) return prev
+        return { ...prev, [key]: value }
+      })
 
-    if (value) {
-      if (key === 'timeline') {
-        setFormState((prev) => ({ ...prev, timeline: '' }))
-      } else if (key === 'team') {
-        setFormState((prev) => ({ ...prev, selectedTeam: '' }))
-      } else if (key === 'infrastructure') {
-        setFormState((prev) => ({ ...prev, infrastructure: '' }))
+      if (value) {
+        if (key === 'timeline') {
+          setFormState((prev) => ({ ...prev, timeline: '' }))
+        } else if (key === 'team') {
+          setFormState((prev) => ({ ...prev, selectedTeam: '' }))
+        } else if (key === 'infrastructure') {
+          setFormState((prev) => ({ ...prev, infrastructure: '' }))
+        }
       }
-    }
-  }, [clearStepError])
+    },
+    [clearStepError]
+  )
 
   const handleProjectSubmit = useCallback(async () => {
     if (step !== 'infrastructure') {
@@ -315,66 +320,66 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
               const updated = data?.onUpdateProject
               if (!updated || updated.id !== projectId) return
               logger.debug('[estimator] subscription update received')
-            if (updated.AI_estimatedCost) {
-              setAiEstimate(updated.AI_estimatedCost)
-            }
-            if (updated.AI_estimatedTimeline) {
-              setAiTimeline(updated.AI_estimatedTimeline)
-            }
-            if (updated.teamSize) {
-              setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
-              setFormState((prev) => ({ ...prev, selectedTeam: updated.teamSize || '' }))
-            }
-            if (updated.AI_teamSize) {
-              setAiTeamSize(updated.AI_teamSize)
-            }
-            if (updated.scope) {
-              setFormState((prev) => ({ ...prev, scope: updated.scope || '' }))
-            }
-            if (updated.AI_improvedScope) {
-              setAiImprovedScope(updated.AI_improvedScope)
-            }
-            if (updated.AI_costAnalysis) {
-              setAiCostAnalysis(updated.AI_costAnalysis)
-            }
-            if (updated.AI_infrastructure) {
-              setAiInfrastructure(updated.AI_infrastructure)
-            }
-            if (updated.infrastructure) {
-              setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
-              setFormState((prev) => ({ ...prev, infrastructure: updated.infrastructure || '' }))
-            }
-            if (updated.AI_timelineValidation) {
-              const pj = extractPhasesJsonFromText(updated.AI_timelineValidation)
-              if (pj) setAiPhasesJson(pj)
-              setAiTimelineValidationRaw(updated.AI_timelineValidation)
-            }
-            if (updated.AI_timeline) {
-              try {
-                // Expect JSON with { totalDays, phases }
-                const parsed = JSON.parse(updated.AI_timeline)
-                if (parsed && parsed.phases) {
-                  setAiPhasesJson(updated.AI_timeline)
-                }
-              } catch {}
-            }
-            if (updated.AI_infrastructureRecommendations) {
-              setAiInfrastructureRecommendations(updated.AI_infrastructureRecommendations)
-            }
-            if (updated.AI_riskAssessment) {
-              setAiRiskAssessment(updated.AI_riskAssessment)
-            }
-            // Transition from loading to summary when AI data arrives
-            // Check multiple fields since AI_estimatedCost might remain null
-            if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
-              logger.debug('[estimator] AI data received via subscription')
-              aiDataReceived = true
-              setAiStatus('ready')
-              setStep('summary')
-            }
-          },
-          error: (err: Error) => logger.error('[estimator] Subscription error:', err),
-        })
+              if (updated.AI_estimatedCost) {
+                setAiEstimate(updated.AI_estimatedCost)
+              }
+              if (updated.AI_estimatedTimeline) {
+                setAiTimeline(updated.AI_estimatedTimeline)
+              }
+              if (updated.teamSize) {
+                setAutoSelections((prev) => (prev.team ? { ...prev, team: false } : prev))
+                setFormState((prev) => ({ ...prev, selectedTeam: updated.teamSize || '' }))
+              }
+              if (updated.AI_teamSize) {
+                setAiTeamSize(updated.AI_teamSize)
+              }
+              if (updated.scope) {
+                setFormState((prev) => ({ ...prev, scope: updated.scope || '' }))
+              }
+              if (updated.AI_improvedScope) {
+                setAiImprovedScope(updated.AI_improvedScope)
+              }
+              if (updated.AI_costAnalysis) {
+                setAiCostAnalysis(updated.AI_costAnalysis)
+              }
+              if (updated.AI_infrastructure) {
+                setAiInfrastructure(updated.AI_infrastructure)
+              }
+              if (updated.infrastructure) {
+                setAutoSelections((prev) => (prev.infrastructure ? { ...prev, infrastructure: false } : prev))
+                setFormState((prev) => ({ ...prev, infrastructure: updated.infrastructure || '' }))
+              }
+              if (updated.AI_timelineValidation) {
+                const pj = extractPhasesJsonFromText(updated.AI_timelineValidation)
+                if (pj) setAiPhasesJson(pj)
+                setAiTimelineValidationRaw(updated.AI_timelineValidation)
+              }
+              if (updated.AI_timeline) {
+                try {
+                  // Expect JSON with { totalDays, phases }
+                  const parsed = JSON.parse(updated.AI_timeline)
+                  if (parsed && parsed.phases) {
+                    setAiPhasesJson(updated.AI_timeline)
+                  }
+                } catch {}
+              }
+              if (updated.AI_infrastructureRecommendations) {
+                setAiInfrastructureRecommendations(updated.AI_infrastructureRecommendations)
+              }
+              if (updated.AI_riskAssessment) {
+                setAiRiskAssessment(updated.AI_riskAssessment)
+              }
+              // Transition from loading to summary when AI data arrives
+              // Check multiple fields since AI_estimatedCost might remain null
+              if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
+                logger.debug('[estimator] AI data received via subscription')
+                aiDataReceived = true
+                setAiStatus('ready')
+                setStep('summary')
+              }
+            },
+            error: (err: Error) => logger.error('[estimator] Subscription error:', err),
+          })
         subscriptionRef.current = sub as unknown as { unsubscribe: () => void }
 
         // Immediate fetch to avoid races where updates land before subscription is ready
@@ -800,9 +805,6 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     }
   }, [formState, lastProjectId])
 
-
-
-
   // Track form progress with GA4 events
   useEffect(() => {
     switch (step) {
@@ -972,10 +974,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
 
   const timelineRangeForHours = timelineRangeFromSummary || timelineRangeFromPhases || timelineRangeFromAiTimeline
 
-  const timelineLabelFromPhases = useMemo(
-    () => formatMonthsRange(timelineRangeFromPhases),
-    [timelineRangeFromPhases]
-  )
+  const timelineLabelFromPhases = useMemo(() => formatMonthsRange(timelineRangeFromPhases), [timelineRangeFromPhases])
 
   const timelineLabelFromSummaryRange = useMemo(
     () => formatMonthsRange(timelineRangeFromSummary),
@@ -996,7 +995,16 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     if (aiTimeline?.trim()) return aiTimeline.trim()
     if (autoSelections.timeline) return "We'll recommend a timeline for you."
     return formState.timeline || 'TBD'
-  }, [timelineLabelFromPhases, timelineLabelFromSummaryRange, timelineLabelFromAiTimeline, timelineInsightFromPhases, timelineSummaryFromAI, aiTimeline, autoSelections.timeline, formState.timeline])
+  }, [
+    timelineLabelFromPhases,
+    timelineLabelFromSummaryRange,
+    timelineLabelFromAiTimeline,
+    timelineInsightFromPhases,
+    timelineSummaryFromAI,
+    aiTimeline,
+    autoSelections.timeline,
+    formState.timeline,
+  ])
 
   const displayedHours = useMemo(() => {
     if (timelineRangeForHours) {

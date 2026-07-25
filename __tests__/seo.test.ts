@@ -1,11 +1,4 @@
-import {
-  PAGE_SEO,
-  DEFAULT_SEO,
-  SITE_ORIGIN,
-  getPageSeo,
-  buildCanonicalUrl,
-  getStaticSitemapPaths,
-} from '../lib/seo'
+import { PAGE_SEO, DEFAULT_SEO, SITE_ORIGIN, getPageSeo, buildCanonicalUrl, getStaticSitemapPaths } from '../lib/seo'
 
 describe('buildCanonicalUrl', () => {
   it('produces an absolute URL with a trailing slash', () => {
