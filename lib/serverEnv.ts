@@ -49,6 +49,16 @@ export const SERVER_ENV_VARS: Record<string, ServerEnvVarSpec> = {
     description: 'DynamoDB table backing the shared API rate limiter; falls back to a per-instance in-memory store.',
     source: 'Provision with a String partition key `pk` and TTL enabled on the `ttl` attribute.',
   },
+  SES_FROM_ADDRESS: {
+    required: false,
+    description: 'Verified SES sender address used to email visitors a copy of their estimate.',
+    source: 'SES > Verified identities. Without it the mailer logs instead of sending.',
+  },
+  COMPANY_POSTAL_ADDRESS: {
+    required: false,
+    description: 'Postal address printed in the estimate email footer, required by CAN-SPAM.',
+    source: 'The registered business address.',
+  },
   RATE_LIMIT_SALT: {
     required: false,
     description: 'Salt used when hashing client IP addresses into rate-limit keys so raw IPs are never stored.',

@@ -129,6 +129,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
   const [lastProjectId, setLastProjectId] = useState<string | null>(null)
   const contactFormTrackedFields = useRef<Set<string>>(new Set())
+  const estimatorRenderedAt = useRef<number>(Date.now())
   const [autoSelections, setAutoSelections] = useState({
     timeline: false,
     team: false,
@@ -156,6 +157,12 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   // here and disabled beyond it, so nobody can skip a question by clicking
   // ahead -- the validation in handleNext is still the only way forward.
   const [maxStepReached, setMaxStepReached] = useState<WizardStep>('scope')
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false)
+
+  // HN-02: opt-in, defaulted ON. The visitor has just asked for an estimate,
+  // so a copy of it is the thing they came for rather than marketing they
+  // must be tricked into. It is still a real checkbox they can clear.
+  const [emailCopy, setEmailCopy] = useState(true)
   const router = useRouter()
 
   /**
@@ -770,6 +777,28 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       }
 
       logger.debug('[estimator] lead created in HubSpot')
+
+      // Send the copy only after the lead is recorded. The lead is the thing
+      // that matters commercially; the email is a courtesy, and it must never
+      // be the reason a submission appears to fail. The endpoint swallows its
+      // own transport errors for the same reason.
+      if (emailCopy && lastProjectId) {
+        fetch('/api/email-estimate/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            estimateId: lastProjectId,
+            email: formState.emailAddress,
+            firstName: formState.firstName,
+            renderedAt: estimatorRenderedAt.current,
+          }),
+        })
+          .then(() => {
+            window.dataLayer?.push({ event: 'estimate_emailed', env, app_env: env, tracking_id: lastProjectId })
+          })
+          .catch((error) => logger.warn('[estimator] estimate email request failed', describeError(error)))
+      }
+
       toast.success("Thank you! We'll be in touch soon.", TOAST_OPTIONS)
     } catch (error: any) {
       logger.error('[estimator] Error creating lead:', error)
@@ -778,7 +807,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         TOAST_OPTIONS
       )
     }
-  }, [formState, lastProjectId])
+  }, [formState, lastProjectId, emailCopy])
 
   // Track form progress with GA4 events
   useEffect(() => {
@@ -1084,6 +1113,69 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     return 'TBD'
   }, [aiInfrastructure, aiInfrastructureRecommendations, formState.infrastructure, autoSelections.infrastructure])
 
+  /**
+   * HN-03: build and download the estimate as a PDF.
+   *
+   * jsPDF is imported on demand so its ~350KB never lands in the initial
+   * bundle -- most visitors never reach the summary, and none of them should
+   * pay for a library they will not use.
+   */
+  const handleDownloadPdf = useCallback(async () => {
+    if (!lastProjectId || isPreparingPdf) return
+    setIsPreparingPdf(true)
+
+    try {
+      const [{ jsPDF }, { drawEstimatePdf, buildPdfFilename }] = await Promise.all([
+        import('jspdf'),
+        import('../lib/estimatePdf'),
+      ])
+
+      let phases: { label: string; days: number }[] | undefined
+      if (aiPhasesJson) {
+        try {
+          phases = JSON.parse(aiPhasesJson)?.phases
+        } catch {
+          // Malformed phase JSON just means no chart, not a failed download.
+        }
+      }
+
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      drawEstimatePdf(doc as never, {
+        id: lastProjectId,
+        cost: displayedCost,
+        timeline: displayedTimeline,
+        hours: displayedHours,
+        team: displayedTeamSize,
+        infrastructure: displayedInfrastructure,
+        scope: aiImprovedScope || formState.scope,
+        risks: aiRiskAssessment,
+        phases,
+        isPreliminary: aiStatus !== 'ready',
+      })
+      doc.save(buildPdfFilename(lastProjectId))
+
+      window.dataLayer?.push({ event: 'estimate_pdf_downloaded', env, app_env: env, tracking_id: lastProjectId })
+    } catch (error) {
+      logger.error('[estimator] pdf generation failed', describeError(error))
+      toast.error('We could not build the PDF. The estimate link still works.', TOAST_OPTIONS)
+    } finally {
+      setIsPreparingPdf(false)
+    }
+  }, [
+    lastProjectId,
+    isPreparingPdf,
+    aiPhasesJson,
+    displayedCost,
+    displayedTimeline,
+    displayedHours,
+    displayedTeamSize,
+    displayedInfrastructure,
+    aiImprovedScope,
+    formState.scope,
+    aiRiskAssessment,
+    aiStatus,
+  ])
+
   const ganttChartContent = useMemo(() => {
     if (step !== 'summary') return null
     if (!aiPhasesJson && !aiTimeline) return null
@@ -1106,7 +1198,11 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
                 <EstimateStatusBanner status={aiStatus} onRetry={handleRetryEstimate} />
               ) : null}
               {step === 'summary' && lastProjectId && !restoreFailed ? (
-                <EstimateShareBar onCopyLink={handleCopyLink} />
+                <EstimateShareBar
+                  onCopyLink={handleCopyLink}
+                  onDownloadPdf={handleDownloadPdf}
+                  isPreparingPdf={isPreparingPdf}
+                />
               ) : null}
               {(WIZARD_STEPS as readonly string[]).includes(step) ? (
                 <EstimatorProgress
@@ -1293,6 +1389,24 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           props: {
             onClick: handleContactSubmit,
           },
+          wrap: (node: React.ReactNode) => (
+            <>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  margin: '12px 0',
+                  fontSize: 14,
+                  color: 'rgba(255,255,255,0.8)',
+                  cursor: 'pointer',
+                }}>
+                <input type='checkbox' checked={emailCopy} onChange={(e) => setEmailCopy(e.target.checked)} />
+                Email me a copy of this estimate
+              </label>
+              {node}
+            </>
+          ),
         }}
         estimatedTimeline={displayedTimeline}
         estimatedHours={displayedHours}

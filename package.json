@@ -15,6 +15,7 @@
   "dependencies": {
     "@aws-amplify/adapter-nextjs": "^1.6.3",
     "@aws-sdk/client-dynamodb": "^3.1095.0",
+    "@aws-sdk/client-sesv2": "^3.1095.0",
     "@plasmicapp/react-web": "^0.2.404",
     "@plasmicpkgs/antd5": "^0.0.306",
     "@plasmicpkgs/lottie-react": "^0.0.209",
@@ -27,6 +28,7 @@
     "@plasmicpkgs/react-scroll-parallax": "^0.0.235",
     "@plasmicpkgs/react-slick": "^0.0.249",
     "aws-amplify": "^6.15.0",
+    "jspdf": "^4.2.1",
     "next": "14.2.29",
     "react": "^18",
     "react-dom": "^18",
