@@ -78,10 +78,7 @@ function buildRows(project: EstimateEmailProject): Row[] {
   return rows
 }
 
-export function renderEstimateEmail(
-  project: EstimateEmailProject,
-  options: EstimateEmailOptions
-): RenderedEmail {
+export function renderEstimateEmail(project: EstimateEmailProject, options: EstimateEmailOptions): RenderedEmail {
   const greetingName = options.firstName?.trim()
   const greeting = greetingName ? `Hi ${greetingName},` : 'Hi,'
   const rows = buildRows(project)

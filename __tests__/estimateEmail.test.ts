@@ -20,9 +20,7 @@ describe('escapeHtml', () => {
   // email has none of React's escaping, so this is the only thing standing
   // between hostile input and a mail client rendering it.
   it('escapes every character that could break out of markup', () => {
-    expect(escapeHtml('<script>alert("x")</script>')).toBe(
-      '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;'
-    )
+    expect(escapeHtml('<script>alert("x")</script>')).toBe('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;')
     expect(escapeHtml("it's & more")).toBe('it&#39;s &amp; more')
   })
 
