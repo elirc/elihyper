@@ -11,3 +11,7 @@ core/utils/queries.ts
 # Ignore all markdown files in docs directory
 docs/**/*.md
 
+
+# Written into the workspace by the gitleaks step in CI, then picked up by
+# prettier --check in the next step. A generated report is not source.
+results.sarif
