@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { Amplify } from 'aws-amplify'
 import { PlasmicSplitsAppProvider } from '@/components/PlasmicExperimentTracking'
+import SeoHead from '@/components/SeoHead'
 // import { generateClient } from 'aws-amplify/api';
 
 // Load the correct Amplify config based on environment
@@ -194,23 +195,13 @@ export default function MyApp({ Component, pageProps }: AppProps) {
             `,
           }}
         />
-        {/* Open Graph Meta Tags */}
-        <meta property='og:title' content='Hypernova Inc - Build with Proven Teams' />
-        <meta
-          property='og:description'
-          content='Accelerate your project with senior developers and proven teams. Get a custom estimate today!'
-        />
-        <meta property='og:image' content='/og-image.png' />
-        <meta property='og:url' content='https://hypernova.inc' />
-        <meta property='og:type' content='website' />
-        {/* Twitter Card Meta Tags */}
-        <meta name='twitter:card' content='summary_large_image' />
-        <meta name='twitter:title' content='Hypernova Inc - Build with Proven Teams' />
-        <meta
-          name='twitter:description'
-          content='Accelerate your project with senior developers and proven teams. Get a custom estimate today!'
-        />
-        <meta name='twitter:image' content='/og-image.png' />
+        {/*
+          Per-route title, description, canonical and social tags now come from
+          <SeoHead /> below, driven by lib/seo.ts. The hard-coded Open Graph
+          block that used to live here applied the same title and description
+          to all 17 routes, so every page shared identically and competed with
+          itself in search.
+        */}
         {/* Expose app env for debugging/legacy access; tracking scripts below embed `appEnv` directly to avoid race conditions. */}
         <script dangerouslySetInnerHTML={{ __html: `window.__NEXT_APP_ENV__ = "${appEnv}";` }} />
         {trackingDebugEnabled && (
@@ -590,6 +581,7 @@ window._linkedin_data_partner_ids.push(_linkedin_partner_id);
         </noscript>
       )}
       {/* End LinkedIn Insight Tag (noscript) */}
+      <SeoHead />
       <PlasmicSplitsAppProvider initialKnownValues={(pageProps as any)?.plasmicSplitKnownValues}>
         <Component {...pageProps} />
       </PlasmicSplitsAppProvider>
