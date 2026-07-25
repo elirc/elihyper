@@ -7,6 +7,7 @@ import { getProject } from '../src/graphql/queries'
 import { onUpdateProject } from '../src/graphql/subscriptions'
 import GanttChart from './GanttChart'
 import FieldError from './FieldError'
+import EstimateStatusBanner, { type AiStatus } from './EstimateStatusBanner'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
@@ -136,6 +137,15 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   // dialog is unstyled, untranslatable, invisible to analytics, and announced
   // with no association to the field it is complaining about.
   const [stepErrors, setStepErrors] = useState<Partial<Record<StepType, string>>>({})
+
+  // Whether the AI analysis actually arrived.
+  //
+  // This replaces a local `let aiDataReceived = false` captured inside
+  // handleProjectSubmit. That variable belonged to one invocation of one
+  // callback: the summary refresher could not see it, and neither could the
+  // render. Which meant the one thing the UI most needed to know -- are these
+  // real figures or our fallback arithmetic? -- was invisible to it.
+  const [aiStatus, setAiStatus] = useState<AiStatus>('pending')
 
   const failStep = useCallback((stepName: StepType, message: string) => {
     setStepErrors((prev) => ({ ...prev, [stepName]: message }))
@@ -359,6 +369,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             if (updated.AI_costAnalysis || updated.AI_summary || updated.AI_estimatedCost) {
               logger.debug('[estimator] AI data received via subscription')
               aiDataReceived = true
+              setAiStatus('ready')
               setStep('summary')
             }
           },
@@ -407,6 +418,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
           if (p?.AI_costAnalysis || p?.AI_summary || p?.AI_estimatedCost) {
             logger.debug('[estimator] AI data already available on immediate fetch')
             aiDataReceived = true
+            setAiStatus('ready')
             setStep('summary')
           }
         } catch {}
@@ -423,7 +435,16 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         }
 
         if (attempts >= 6) {
-          logger.debug('[estimator] Max fallback polling attempts reached. Showing summary with available data.')
+          // Previously this silently showed the summary, so the locally
+          // computed baseline was indistinguishable from a real analysis.
+          logger.warn('[estimator] AI analysis did not arrive; showing preliminary estimate')
+          setAiStatus('degraded')
+          window.dataLayer?.push({
+            event: 'estimator_ai_timeout',
+            env,
+            app_env: env,
+            tracking_id: projectId,
+          })
           setStep('summary')
           return
         }
@@ -488,6 +509,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
             }
             logger.debug('[estimator] AI data received via polling')
             aiDataReceived = true
+            setAiStatus('ready')
             setStep('summary')
             return
           } else {
@@ -526,6 +548,8 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       logger.error('[estimator] Error creating project:', e)
       // Stay on the infrastructure step with the answers intact rather than
       // dropping the visitor into an empty summary.
+      setAiStatus('error')
+      window.dataLayer?.push({ event: 'estimator_ai_error', env, app_env: env })
       setStep('infrastructure')
       toast.error(e.message || 'We could not create your estimate. Please try again.', TOAST_OPTIONS)
     }
@@ -611,6 +635,7 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
       infrastructure: false,
     })
     setStepErrors({})
+    setAiStatus('pending')
     setAiEstimate(null)
     setAiTimeline(null)
     setAiPhasesJson(null)
@@ -622,6 +647,18 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
     setAiInfrastructureRecommendations(null)
     setAiRiskAssessment(null)
   }, [createInitialFormState])
+
+  /**
+   * Re-runs the estimate with the same answers after a timeout or failure.
+   * Creates a NEW project rather than mutating the old one: the schema grants
+   * anonymous visitors create and read, not update (see HN-11).
+   */
+  const handleRetryEstimate = useCallback(() => {
+    setAiStatus('pending')
+    setStep('infrastructure')
+    window.dataLayer?.push({ event: 'estimator_retry', env, app_env: env })
+    handleProjectSubmit()
+  }, [handleProjectSubmit])
 
   const handleStartEstimate = useCallback(() => {
     logger.debug('[estimator] Starting estimate')
@@ -870,6 +907,9 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
         }
         if (p?.AI_infrastructureRecommendations) setAiInfrastructureRecommendations(p.AI_infrastructureRecommendations)
         if (p?.AI_riskAssessment) setAiRiskAssessment(p.AI_riskAssessment)
+        // The refresher keeps running after a timeout, so a late analysis
+        // still upgrades the summary and removes the banner without a reload.
+        if (p?.AI_costAnalysis || p?.AI_summary || p?.AI_estimatedCost) setAiStatus('ready')
       } catch {}
       if (!aiEstimate && attempts < 30 && step === 'summary') {
         timer = setTimeout(tick, 1000)
@@ -1004,7 +1044,21 @@ function ProjectEstimator_(props: ProjectEstimatorProps, ref: HTMLElementRefOf<'
   return (
     <>
       <PlasmicProjectEstimator
-        root={{ ref }}
+        root={{
+          ref,
+          // Wrapping the root keeps this independent of the internal node
+          // names in the generated component, so a design change cannot
+          // silently remove the one thing telling a visitor these numbers
+          // are provisional.
+          wrap: (node: React.ReactNode) => (
+            <>
+              {step === 'summary' || aiStatus === 'error' ? (
+                <EstimateStatusBanner status={aiStatus} onRetry={handleRetryEstimate} />
+              ) : null}
+              {node}
+            </>
+          ),
+        }}
         {...props}
         step={step}
         aiImprovedScope={aiImprovedScope || undefined}
