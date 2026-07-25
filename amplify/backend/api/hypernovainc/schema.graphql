@@ -1,6 +1,46 @@
-# This "input" configures a global authorization rule to enable public access to
-# all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
-type Project @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+# Authorization model
+# ===================
+#
+# This API is reached with *anonymous* Cognito identity-pool credentials. Those
+# credentials ship inside the JavaScript bundle: every visitor has them, and so
+# does anyone who opens devtools. Authorization here is therefore the only
+# thing standing between the public internet and this data.
+#
+# Every model previously carried:
+#
+#     @auth(rules: [{ allow: public, provider: identityPool }])
+#
+# with no `operations`, which grants all of them. @model generates create,
+# read (get + list), update and delete resolvers plus subscriptions, so that
+# rule meant any anonymous visitor could call listLeads and read every name,
+# email address and phone number ever submitted -- or call deleteProject.
+#
+# The rules below grant only what the application actually calls. The principle
+# is least privilege: start from nothing and add the specific operations the
+# product needs, rather than starting from everything and hoping nobody
+# notices.
+#
+# Operation names come from the transformer v2 fine-grained set
+# (create, get, list, update, delete, listen). `listen` controls subscriptions.
+
+# A project estimate. Created anonymously by the estimator wizard, then
+# enriched asynchronously by a worker that lives outside this repository.
+#
+# - create: the wizard submits the visitor's answers.
+# - get:    the wizard polls its own estimate by id, and HN-01 restores an
+#           estimate from a shareable link. That id is the only thing
+#           protecting a given estimate, so treat it as a capability token and
+#           never build a UI that enumerates ids.
+# - listen: the wizard subscribes to onUpdateProject to receive AI results
+#           live. HN-10 constrains that subscription to a single id.
+#
+# Deliberately NOT granted:
+# - list:   nothing in the product lists projects, and it would expose every
+#           visitor's scope description and budget to anyone who asked.
+# - update: only the enrichment worker writes AI_* fields, and it should do so
+#           with its own IAM principal rather than the guest role.
+# - delete: nothing deletes projects.
+type Project @model @auth(rules: [{ allow: public, provider: identityPool, operations: [create, get, listen] }]) {
   id: ID!
   scope: String
   timeline: String
@@ -25,7 +65,20 @@ type Project @model @auth(rules: [{ allow: public, provider: identityPool }]) {
   AI_riskAssessment: String
 }
 
-type Lead @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+# A sales lead: personal data, and the most sensitive thing this API stores.
+#
+# create only. The forms submit a lead; nothing in the product ever reads one
+# back, because sales works in HubSpot rather than here.
+#
+# Granting read here was the most serious problem in the original schema:
+# listLeads returned every contact record to any anonymous caller.
+#
+# Write-only-from-the-browser is still not ideal -- an attacker can create junk
+# leads, which is what HN-08 (spam protection) and HN-09 (durable rate
+# limiting) address. HN-07 moves this write server-side, after which even
+# `create` can be revoked from the guest role and this model becomes
+# unreachable from the browser entirely. That is the intended end state.
+type Lead @model @auth(rules: [{ allow: public, provider: identityPool, operations: [create] }]) {
   email: String!
   id: ID!
   firstName: String!
@@ -37,7 +90,17 @@ type Lead @model @auth(rules: [{ allow: public, provider: identityPool }]) {
   updatedAt: AWSDateTime!
 }
 
-type LeadReceiver @model @auth(rules: [{ allow: public, provider: identityPool }]) {
+# Who gets notified about new leads. Configuration, not visitor data.
+#
+# Nothing in this repository reads or writes this model; the enrichment worker
+# appears to be its only consumer. Read access is retained because that worker
+# may authenticate with the same unauthenticated role, and revoking it blind
+# would break lead notifications with no symptom visible from this codebase.
+#
+# TODO(HN-11 follow-up): confirm which IAM principal the worker uses. If it has
+# its own role, remove this rule entirely so the model is not reachable from a
+# browser at all.
+type LeadReceiver @model @auth(rules: [{ allow: public, provider: identityPool, operations: [get, list] }]) {
   email: String! @primaryKey
   name: String
   createdAt: AWSDateTime!
