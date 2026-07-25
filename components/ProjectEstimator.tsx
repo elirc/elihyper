@@ -12,7 +12,6 @@ import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
 import {
-  ROLE_RATES,
   HOURS_PER_PERSON_PER_MONTH,
   parseTimelineToMonths,
   getTeamComposition,

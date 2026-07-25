@@ -264,7 +264,6 @@ export default function AstronautScene({
     if (!container) return
 
     // Guard to prevent double initialization in React StrictMode
-    let isInitialized = false
 
     // Check if device is tablet or mobile for feature toggling
     const isTabletOrMobile = window.innerWidth <= 1024
