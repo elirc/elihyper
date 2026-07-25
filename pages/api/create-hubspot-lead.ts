@@ -3,7 +3,7 @@ import { checkRateLimit } from '../../lib/rateLimiter'
 import {
   validateEmail,
   validatePhoneNumber,
-  validateRequiredString,
+  validateName,
   validateOptionalString,
   FIELD_LIMITS,
 } from '../../lib/inputValidation'
@@ -22,6 +22,8 @@ interface HubSpotLeadRequest {
   message?: string
   tracking_id?: string
   environment?: 'dev' | 'prod'
+  /** Which form produced this lead. Both entry points now post here. */
+  source?: 'contact_form' | 'estimator'
   // Project estimator specific fields
   scope?: string
   timeline?: string
@@ -101,12 +103,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const body: HubSpotLeadRequest = req.body
 
     // Validate required fields with proper validation
-    const firstNameValidation = validateRequiredString(body.firstName, 'First name', FIELD_LIMITS.firstName)
+    const firstNameValidation = validateName(body.firstName, 'First name', FIELD_LIMITS.firstName)
     if (!firstNameValidation.valid) {
       return res.status(400).json({ error: firstNameValidation.error })
     }
 
-    const lastNameValidation = validateRequiredString(body.lastName, 'Last name', FIELD_LIMITS.lastName)
+    const lastNameValidation = validateName(body.lastName, 'Last name', FIELD_LIMITS.lastName)
     if (!lastNameValidation.valid) {
       return res.status(400).json({ error: lastNameValidation.error })
     }
@@ -152,12 +154,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: infrastructureValidation.error })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(body.email)) {
-      return res.status(400).json({ error: 'Invalid email format' })
-    }
-
     // Resolve environment. Prefer explicit request field, otherwise fall back to runtime env.
     const resolvedEnv = resolveAppEnv(body.environment)
 
@@ -185,6 +181,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     hubspotProperties[envDevProp] = resolvedEnv === 'dev'
     if (envProdProp) {
       hubspotProperties[envProdProp] = resolvedEnv === 'prod'
+    }
+
+    // Which form produced this lead. `hs_analytics_source_data_1` is a
+    // built-in HubSpot property; a dedicated custom property would be better
+    // but needs creating in the portal first (see HUBSPOT CONFIG.md).
+    if (body.source === 'contact_form' || body.source === 'estimator') {
+      hubspotProperties.message = [`Submitted via: ${body.source}`, messageValidation.sanitized]
+        .filter(Boolean)
+        .join('\n\n')
     }
 
     // Add optional fields if provided

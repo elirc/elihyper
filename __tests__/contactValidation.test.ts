@@ -57,20 +57,45 @@ describe('validateName', () => {
   })
 
   it('names the field in the error message', () => {
-    expect(validateName('123', 'Last name').errorMessage).toBe('Last name can only contain letters and hyphens')
+    expect(validateName('123', 'Last name').errorMessage).toBe("Last name contains characters we can't accept")
   })
 
-  // CHARACTERISATION: these assertions pin a known defect so the extraction is
-  // provably behaviour-preserving. HN-07 replaces the rule with a
-  // Unicode-aware one and flips these to `true` -- deliberately, in a diff a
-  // reviewer can see.
-  describe('known defect: rejects legitimate names (fixed in HN-07)', () => {
-    it.each([['Anne Marie'], ["O'Brien"], ['Renée'], ['Müller'], ['de la Cruz']])(
-      'currently rejects %s',
-      (name) => {
-        expect(validateName(name, 'First name').isValid).toBe(false)
-      }
-    )
+  // These were the characterisation assertions from HN-19, flipped by HN-07.
+  // The diff of this block is the entire behaviour change: names people
+  // actually have are now accepted.
+  describe('accepts names people actually have', () => {
+    it.each([
+      ['Anne Marie'],
+      ["O'Brien"],
+      ['O’Brien'], // iOS and Word substitute a curly apostrophe
+      ['Renée'],
+      ['Müller'],
+      ['de la Cruz'],
+      ['Ana María'],
+      ['José'],
+      ['Nguyễn'],
+      ['李'],
+      ['Владимир'],
+      ['St. John'],
+    ])('accepts %s', (name) => {
+      expect(validateName(name, 'First name').isValid).toBe(true)
+    })
+
+    it.each([['R2D2'], ['name@example.com'], ['555']])('still rejects %s', (name) => {
+      expect(validateName(name, 'First name').isValid).toBe(false)
+    })
+
+    // Order of operations, worth knowing: sanitizeInput strips the angle
+    // brackets BEFORE the pattern runs, so "<script>" arrives as "script" and
+    // passes as an ordinary word. The defence is the stripping, not the
+    // pattern -- the stored value is inert either way.
+    it('sanitises markup rather than rejecting it', () => {
+      expect(validateName('<script>', 'First name')).toMatchObject({ isValid: true, sanitized: 'script' })
+    })
+
+    it('rejects a name longer than 100 characters', () => {
+      expect(validateName('a'.repeat(101), 'First name').isValid).toBe(false)
+    })
   })
 })
 

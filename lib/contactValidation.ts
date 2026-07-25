@@ -17,6 +17,13 @@
  * entirely skips these rules.
  */
 
+/**
+ * Unicode letters, combining marks, and the punctuation that appears in real
+ * names. Declared without the /g flag: .test() on a global regex advances
+ * lastIndex, so a shared /g pattern returns alternating answers.
+ */
+export const NAME_PATTERN = /^[\p{L}\p{M}'’\-. ]+$/u
+
 export interface ValidationResult {
   isValid: boolean
   sanitized: string
@@ -60,11 +67,20 @@ export function stripPromptInjectionTokens(input: string): string {
 /**
  * Validates a first or last name.
  *
- * KNOWN DEFECT (fixed in HN-07): the character class is /^[a-zA-Z-]+$/, which
- * rejects spaces, apostrophes and any accented character. "Anne Marie",
- * "O'Brien" and "Renée" are all turned away by a form whose only job is to
- * collect leads. It is preserved here unchanged so that this extraction is a
- * pure move; HN-07 replaces it with a Unicode-aware rule.
+ * The rule was /^[a-zA-Z-]+$/, which rejected spaces, apostrophes and every
+ * accented character -- so "Anne Marie", "O'Brien", "Renée" and "de la Cruz"
+ * were all turned away by a form whose only purpose is collecting leads. It is
+ * hard to imagine a more expensive validation rule.
+ *
+ * The replacement accepts any Unicode letter (\p{L}), combining marks
+ * (\p{M}, needed for decomposed accents), plus space, apostrophe, hyphen and
+ * full stop. The `u` flag is required for \p{...} to mean anything -- without
+ * it the pattern is silently interpreted as a literal.
+ *
+ * Both apostrophe forms are accepted: U+0027 (typed) and U+2019 (what iOS and
+ * Word substitute automatically).
+ *
+ * Still rejected: digits, angle brackets, and anything the sanitiser strips.
  */
 export function validateName(name: string, fieldName: string): ValidationResult {
   const sanitized = sanitizeInput(name)
@@ -73,8 +89,12 @@ export function validateName(name: string, fieldName: string): ValidationResult 
     return { isValid: false, sanitized, errorMessage: `${fieldName} is required` }
   }
 
-  if (!/^[a-zA-Z-]+$/.test(sanitized)) {
-    return { isValid: false, sanitized, errorMessage: `${fieldName} can only contain letters and hyphens` }
+  if (sanitized.length > 100) {
+    return { isValid: false, sanitized, errorMessage: `${fieldName} must be less than 100 characters` }
+  }
+
+  if (!NAME_PATTERN.test(sanitized)) {
+    return { isValid: false, sanitized, errorMessage: `${fieldName} contains characters we can't accept` }
   }
 
   return { isValid: true, sanitized, errorMessage: '' }
