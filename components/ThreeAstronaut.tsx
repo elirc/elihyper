@@ -1261,6 +1261,41 @@ export default function AstronautScene({
 
     renderer.setAnimationLoop(animate)
 
+    /* ------------- Pause when nobody can see it -------------
+     *
+     * A WebGL render loop keeps a GPU busy at 60fps whether or not the
+     * canvas is on screen. On a phone that is a measurable amount of the
+     * battery, spent on a decoration the visitor has scrolled past.
+     *
+     * setAnimationLoop(null) stops the loop without tearing down the scene,
+     * so resuming costs nothing and no state is lost.
+     */
+    const isPageHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden'
+    let isOnScreen = true
+
+    const updateLoopState = () => {
+      const shouldRun = isOnScreen && !isPageHidden()
+      renderer.setAnimationLoop(shouldRun ? animate : null)
+    }
+
+    const handleVisibilityChange = () => updateLoopState()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // rootMargin keeps it running slightly outside the viewport so the
+    // astronaut is already moving by the time it scrolls into view.
+    const visibilityObserver =
+      typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver(
+            (entries) => {
+              isOnScreen = entries.some((entry) => entry.isIntersecting)
+              updateLoopState()
+            },
+            { rootMargin: '200px' }
+          )
+        : null
+
+    if (visibilityObserver && container) visibilityObserver.observe(container)
+
     /* ---------------- Resize ---------------- */
     const onResize = () => {
       const w = container.clientWidth
@@ -1298,6 +1333,8 @@ export default function AstronautScene({
         loaderFadeTimerRef.current = null
       }
       renderer.setAnimationLoop(null)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      visibilityObserver?.disconnect()
       pmremGenerator.dispose()
       renderer.dispose()
       container.innerHTML = ''
