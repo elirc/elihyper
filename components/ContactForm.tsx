@@ -10,6 +10,13 @@ import { createLead } from '../src/graphql/mutations'
 import { toast, ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { env } from '../src/utils/env'
+import {
+  validateName,
+  validateEmail,
+  validatePhoneNumber,
+  validateDescription,
+  stripPromptInjectionTokens,
+} from '../lib/contactValidation'
 
 // Your component props start with props for variants and slots you defined
 // in Plasmic, but you can add more here, like event handlers that you can
@@ -89,140 +96,17 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
   }
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Strip dangerous characters in real-time
-    const sanitized = e.target.value
-      .replace(/[<>]/g, '') // Remove angle brackets
-      .replace(/javascript:/gi, '') // Remove javascript protocol
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .replace(/system:/gi, '') // Block prompt injection keywords
-      .replace(/assistant:/gi, '')
-      .replace(/user:/gi, '')
-      .replace(/<\|.*?\|>/g, '') // Remove special tokens
-      .replace(/\[INST\]/gi, '')
-      .replace(/\[\/INST\]/gi, '')
+    const sanitized = stripPromptInjectionTokens(
+      e.target.value
+        .replace(/[<>]/g, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+=/gi, '')
+    )
     console.log('Description changed', sanitized)
     setDescription(sanitized)
     if (errors.description) {
       setErrors((prev) => ({ ...prev, description: '' }))
     }
-  }
-
-  // Validation helper functions
-
-  // Sanitize input to prevent XSS and prompt injections
-  const sanitizeInput = (input: string): string => {
-    return input
-      .replace(/[<>]/g, '') // Remove angle brackets
-      .replace(/javascript:/gi, '') // Remove javascript protocol
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .trim()
-  }
-
-  // Validate name (first name or last name)
-  const validateName = (
-    name: string,
-    fieldName: string
-  ): { isValid: boolean; sanitized: string; errorMessage: string } => {
-    const sanitized = sanitizeInput(name)
-
-    if (sanitized.length === 0) {
-      return { isValid: false, sanitized, errorMessage: `${fieldName} is required` }
-    }
-
-    // Only letters and hyphens allowed
-    const nameRegex = /^[a-zA-Z-]+$/
-    if (!nameRegex.test(sanitized)) {
-      return { isValid: false, sanitized, errorMessage: `${fieldName} can only contain letters and hyphens` }
-    }
-
-    return { isValid: true, sanitized, errorMessage: '' }
-  }
-
-  // Validate email
-  const validateEmail = (emailInput: string): { isValid: boolean; sanitized: string; errorMessage: string } => {
-    const sanitized = sanitizeInput(emailInput)
-
-    if (sanitized.length === 0) {
-      return { isValid: false, sanitized, errorMessage: 'Email is required' }
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(sanitized)) {
-      return { isValid: false, sanitized, errorMessage: 'Please enter a valid email address' }
-    }
-
-    return { isValid: true, sanitized, errorMessage: '' }
-  }
-
-  // Validate and format phone number
-  const validatePhoneNumber = (phoneInput: string): { isValid: boolean; sanitized: string; errorMessage: string } => {
-    if (phoneInput.trim().length === 0) {
-      return { isValid: false, sanitized: phoneInput, errorMessage: 'Phone number is required' }
-    }
-
-    // Remove all non-digit and non-plus characters for processing
-    let cleaned = phoneInput.replace(/[\s\-\(\)\.]/g, '')
-
-    // Check if it already has a plus
-    const hasPlus = cleaned.startsWith('+')
-    if (hasPlus) {
-      cleaned = cleaned.substring(1) // Remove + for processing
-    }
-
-    // Remove leading zeros
-    cleaned = cleaned.replace(/^0+/, '')
-
-    // If no digits remain, it's invalid
-    if (cleaned.length === 0 || !/^\d+$/.test(cleaned)) {
-      return { isValid: false, sanitized: phoneInput, errorMessage: 'Phone number must contain only digits' }
-    }
-
-    // US phone number (10 digits) - add +1
-    if (cleaned.length === 10 && !hasPlus) {
-      return { isValid: true, sanitized: `+1${cleaned}`, errorMessage: '' }
-    }
-
-    // US number with country code already (11 digits starting with 1)
-    if (cleaned.length === 11 && cleaned.startsWith('1') && !hasPlus) {
-      return { isValid: true, sanitized: `+${cleaned}`, errorMessage: '' }
-    }
-
-    // International format with country code (varies, but typically 11-15 digits total)
-    if (cleaned.length >= 10 && cleaned.length <= 15) {
-      return { isValid: true, sanitized: `+${cleaned}`, errorMessage: '' }
-    }
-
-    if (cleaned.length < 10) {
-      return { isValid: false, sanitized: phoneInput, errorMessage: 'Phone number is too short' }
-    }
-
-    return { isValid: false, sanitized: phoneInput, errorMessage: 'Please enter a valid phone number' }
-  }
-
-  // Validate description (optional field)
-  const validateDescription = (desc: string): { isValid: boolean; sanitized: string; errorMessage: string } => {
-    const sanitized = sanitizeInput(desc)
-
-    // Description is optional, so empty is valid
-    if (sanitized.length === 0) {
-      return { isValid: true, sanitized, errorMessage: '' }
-    }
-
-    // Block characters commonly used in prompt injections
-    const dangerousPatterns = [
-      /system:/gi,
-      /assistant:/gi,
-      /user:/gi,
-      /<\|.*?\|>/gi, // Special tokens
-      /\[INST\]/gi,
-      /\[\/INST\]/gi,
-    ]
-
-    const hasDangerousContent = dangerousPatterns.some((pattern) => pattern.test(sanitized))
-    if (hasDangerousContent) {
-      return { isValid: false, sanitized, errorMessage: 'Description contains invalid content' }
-    }
-
-    return { isValid: true, sanitized, errorMessage: '' }
   }
 
   // Blur handlers for real-time validation
