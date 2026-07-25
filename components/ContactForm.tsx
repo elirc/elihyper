@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { PlasmicContactForm, DefaultContactFormProps } from './plasmic/hypernova_inc/PlasmicContactForm'
 import { HTMLElementRefOf } from '@plasmicapp/react-web'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import ContactFormErrorItem from './ContactFormErrorItem'
 import { client } from '../src/utils/api-client'
 import { createLead } from '../src/graphql/mutations'
@@ -18,6 +18,7 @@ import {
   stripPromptInjectionTokens,
 } from '../lib/contactValidation'
 import { logger, describeError } from '../lib/logger'
+import { HONEYPOT_FIELD, honeypotFieldProps } from '../lib/spamGuard'
 
 // Your component props start with props for variants and slots you defined
 // in Plasmic, but you can add more here, like event handlers that you can
@@ -78,6 +79,12 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Anti-spam signals. renderedAt is captured once on mount rather than at
+  // submit time, so it measures how long the visitor actually had the form
+  // open. useRef, not useState: changing it must never trigger a render.
+  const renderedAt = useRef<number>(Date.now())
+  const [honeypotValue, setHoneypotValue] = useState('')
 
   const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Strip unwanted characters in real-time (only allow letters and hyphens)
@@ -227,6 +234,8 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
           message: sanitizedData.description || undefined,
           environment: env,
           source: 'contact_form',
+          renderedAt: renderedAt.current,
+          [HONEYPOT_FIELD]: honeypotValue,
           ...readTrackingContext(),
         }),
       })
@@ -370,6 +379,18 @@ function ContactForm_(props: ContactFormProps, ref: HTMLElementRefOf<'form'>) {
                   <ContactFormErrorItem key={key} errorMessage={errorMessage} />
                 ))}
               {isSubmitting && <div style={{ marginTop: '10px', fontStyle: 'italic' }}>Submitting...</div>}
+              {/*
+                Honeypot. Invisible to humans, absent from the tab order and
+                hidden from screen readers -- a trap that catches assistive
+                technology users is not a trap, it is a bug that only affects
+                disabled people. Rendered through an existing slot so this
+                needs no Plasmic design change.
+              */}
+              <input
+                {...honeypotFieldProps}
+                value={honeypotValue}
+                onChange={(e) => setHoneypotValue(e.target.value)}
+              />
             </>
           ),
         }}
