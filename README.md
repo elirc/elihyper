@@ -9,6 +9,7 @@ This is a Next.js project bootstrapped with [`create-plasmic-app`](https://www.n
 | [`fabledocs/01-app-architecture-guide.md`](./fabledocs/01-app-architecture-guide.md) | How the app is built and why — Plasmic codegen, the estimator's state machine, the Amplify backend, the tracking stack |
 | [`fabledocs/02-feature-backlog-user-stories.md`](./fabledocs/02-feature-backlog-user-stories.md) | The 20 stories (HN-01…HN-20) delivered in this repo, each with acceptance criteria |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How we branch, commit, review and merge — and the repo-specific rules that will bite you otherwise |
+| [`upskill/LEARNING-PATH.md`](./upskill/LEARNING-PATH.md) | Upskilling course: read the PR history as a curriculum, trace one promise end to end, then break and extend the system with test-anchored exercises |
 
 Every change after the initial import arrives as a reviewed pull request, so
 `git log --first-parent main` reads as the list of shipped stories.
