@@ -1,5 +1,22 @@
 # HyperNova Inc — Proposed Feature Backlog (20 user stories)
 
+> **Status note (2026-10-06).** Written as a proposal; every story has since
+> been merged in this tree — `git log --merges` on the full history shows
+> `Merge PR #1` … `Merge PR #19` naming HN-01…HN-20 (local merges, not
+> GitHub pull requests), and those merge commits are the best place to read
+> how each story was cut. Stories with verifiable artifacts today:
+> HN-02 (`lib/mailer.ts`, `pages/api/email-estimate.ts`), HN-03
+> (`lib/estimatePdf.ts`), HN-05/07 (`lib/contactValidation.ts`), HN-06
+> (`lib/aiTextParsing.ts`), HN-08 (`lib/spamGuard.ts`), HN-09
+> (`lib/rateLimiter.ts`), HN-12 (`lib/serverEnv.ts`, `.env.example`),
+> HN-14 (`lib/consent.ts`), HN-15 (`lib/seo.ts`, `pages/sitemap.xml.tsx`),
+> HN-16 (`pages/404.tsx`), HN-17 (`lib/readingTime.ts`), HN-19 (11 suites
+> under `__tests__/`, jsdom config), HN-20 (`lib/logger.ts`). Every `lib/`
+> module named here has a matching suite except `logger.ts` (the mailer is
+> covered by `estimateEmail.test.ts`). Merged is not the same as meeting
+> every acceptance criterion — check the tree against a story's criteria
+> before calling it done or reopening it.
+
 > Companion to [01-app-architecture-guide.md](./01-app-architecture-guide.md). Read that first —
 > every story below assumes you know what Plasmic wrappers are and where the estimator's state
 > machine lives.

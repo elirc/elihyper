@@ -1,5 +1,24 @@
 # HyperNova Inc — Application & Architecture Guide
 
+> **Status note (2026-10-06).** This guide was written against the codebase
+> *as inherited*, before the backlog in
+> [02-feature-backlog-user-stories.md](./02-feature-backlog-user-stories.md)
+> was worked. A later pass implemented the backlog in this same tree: the
+> repository's merge history (`Merge PR #1` … `Merge PR #19`, local merges —
+> there are no matching GitHub pull requests) names every story HN-01…HN-20,
+> with #19 landing the last seven (HN-01/02/03/04/13/14/17).
+> Verified differences from what this guide describes: Jest now runs under
+> `jsdom` with **11 unit test suites** in `__tests__/` (not one smoke file);
+> the dead `pages/api/hubspot.ts` stub and the phantom
+> `test:e2e:comprehensive` script are gone; the committed `.env.development`
+> / `.env.production` files were replaced by `.env.example`; `pages/404.tsx`
+> and `pages/sitemap.xml.tsx` exist; and `lib/` now holds the per-story
+> modules (`spamGuard`, `rateLimiter`, `consent`, `estimatePdf`, `mailer`,
+> `serverEnv`, …), most with a matching test. Where §10 or §12 disagrees
+> with the tree, **trust the tree** — and treat any §12 row carrying an
+> HN-xx pointer as fixed by that story's merge, to be verified before you
+> act on it.
+
 > Audience: a developer joining this project who knows React/TypeScript but has never seen
 > Plasmic, AWS Amplify Gen 1, or this repo. Read this end-to-end once; after that use it as a map.
 
@@ -70,8 +89,8 @@ hypernova-inc-main/
 │   ├── index.tsx              # ⭐ homepage; wires the 3D astronaut into the Plasmic hero
 │   ├── plasmic-host.tsx       # Plasmic Studio canvas host (used by designers, not visitors)
 │   ├── api/
-│   │   ├── create-hubspot-lead.ts   # ⭐ the only real API route
-│   │   └── hubspot.ts               # dead stub — logs and returns ok, no real HubSpot call
+│   │   ├── create-hubspot-lead.ts   # ⭐ the main API route
+│   │   └── email-estimate.ts        # emails an estimate summary (HN-02; uses lib/mailer.ts)
 │   ├── insights.tsx, insights/[slug].tsx
 │   ├── technologies.tsx, technology/[slug].tsx
 │   ├── case-study.tsx, case-studies/oso.tsx
@@ -111,8 +130,8 @@ hypernova-inc-main/
 ├── styles/globals.css         # global resets + astronaut experiment CSS gating
 ├── public/                    # favicon, Plasmic image assets, GLB model + textures
 ├── docs/                      # historical design notes (see fabledocs/README.md)
-├── __tests__/ContactForm.test.ts   # the only test file
-├── .env.development / .env.production  # ⚠️ committed, and contain a live HubSpot token (§12)
+├── __tests__/                 # 11 unit suites: estimator maths, AI parsing, spam guard, rate limiter…
+├── .env.example               # template; the once-committed .env.development/.production are gone (HN-12)
 ├── plasmic.json / plasmic.lock       # 🚫 Plasmic CLI bookkeeping
 └── .github/workflows/plasmic.yml     # Plasmic → GitHub sync automation
 ```
@@ -357,8 +376,8 @@ The property names it writes (`estimator_completed`, `tracking_id_uuid`, `utm_*`
 **commented out** at `:229-264` because the matching custom properties don't exist in the HubSpot
 portal yet — that's a known gap, not dead code someone forgot.
 
-`pages/api/hubspot.ts` is a **stub**: it validates an `env` field, `console.log`s, and returns ok.
-Nothing calls it.
+`pages/api/hubspot.ts` was a dead stub (validated an `env` field, logged, returned ok, called by
+nothing); it has since been **removed**. The second API route today is `pages/api/email-estimate.ts`.
 
 ### Data model (`amplify/backend/api/hypernovainc/schema.graphql`)
 
@@ -466,12 +485,14 @@ npm test           # npx --yes jest@29.7.0 --passWithNoTests
    is committed, so the GraphQL calls work out of the box, but the `AI_*` fields will only populate
    if the external enrichment worker is running against that same environment.
 
-**Testing reality check.** `jest.config.js` sets `testEnvironment: 'node'` even though
-`jest-environment-jsdom` and Testing Library are installed, so no component can actually render in a
-test today. `jest.setup.js` hand-implements `toBeInTheDocument`/`toHaveValue`/`toBeDisabled` because
-`@testing-library/jest-dom` "wouldn't install" at the time. `__tests__/ContactForm.test.ts` only
-asserts that modules export things. `package.json` also declares
-`test:e2e:comprehensive → node scripts/e2e-comprehensive.js`, and **`scripts/` does not exist**.
+**Testing reality check — since fixed (HN-19).** As inherited, `jest.config.js` set
+`testEnvironment: 'node'` (so no component could render), matchers were hand-rolled, the single
+test file only asserted that modules export things, and `package.json` declared
+`test:e2e:comprehensive → node scripts/e2e-comprehensive.js` with no `scripts/` directory. Today
+the config runs `jsdom`, excludes generated Plasmic/Amplify code from coverage on purpose (the
+comment in `jest.config.js` says why), and `__tests__/` holds 11 suites covering the estimator
+maths, AI text parsing, spam guard, rate limiter, consent, SEO and PDF/email paths — `npm test`
+is the check.
 
 **Git hooks** (`.husky/`): `pre-commit` runs `npm run lint` and then `git add -A` — note that this
 stages *everything* in your working tree, including files you deliberately left out of the commit.
@@ -523,7 +544,7 @@ These are facts about the code as it stands today. Several map directly to stori
 | 9 | **No custom `404`/`500` pages**, no `_document.tsx` | `pages/` | Visitors hit the bare Next.js error page. → **HN-16** |
 | 10 | **Tracking scripts load before any consent** | `pages/_app.tsx` | GDPR/ePrivacy exposure for EU traffic. → **HN-14** |
 | 11 | **Two lead paths behave differently** (§7) — the contact form never reaches HubSpot | `ContactForm.tsx:310` | Leads from the main form are invisible to sales in the CRM. → **HN-07** |
-| 12 | `pages/api/hubspot.ts` is a dead stub; `scripts/e2e-comprehensive.js` referenced by `package.json` doesn't exist | | Confusing for newcomers; the npm script fails. → **HN-19** |
+| 12 | ~~`pages/api/hubspot.ts` is a dead stub; `scripts/e2e-comprehensive.js` referenced by `package.json` doesn't exist~~ **Fixed**: the stub and the phantom script are both gone | | → **HN-19**, delivered |
 | 13 | Test suite can't render components (`testEnvironment: 'node'`), one smoke file, hand-rolled matchers | `jest.config.js`, `jest.setup.js` | No safety net for the estimator's state machine. → **HN-19** |
 | 14 | Text-mining of LLM prose (`PHASES_JSON:` marker, regex extractors) | `ProjectEstimator.tsx:124-311` | Any prompt change downstream silently breaks the summary UI |
 | 15 | `isMobile` is computed from a resize listener after mount | `pages/index.tsx:28-35` | First paint always uses desktop geometry; causes a layout shift on phones |
